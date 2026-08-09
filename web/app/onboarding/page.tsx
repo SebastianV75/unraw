@@ -78,7 +78,7 @@ export default function OnboardingPage() {
 			setAreas((current) => [...current, { name: "", projects: [] }]);
 	}
 
- async function handleSubmit() {
+	async function handleSubmit() {
 		const validAreas = areas.map((area) => ({
 			name: area.name.trim(),
 			projects: area.projects.map((project) => project.trim()),
@@ -101,7 +101,9 @@ export default function OnboardingPage() {
 				return new Set(projects).size !== projects.length;
 			})
 		) {
-			setError("Los proyectos deben tener nombres distintos dentro de cada área.");
+			setError(
+				"Los proyectos deben tener nombres distintos dentro de cada área.",
+			);
 			return;
 		}
 
@@ -183,16 +185,45 @@ export default function OnboardingPage() {
 				<p className="onboarding-label">Unraw · Primer paso</p>
 				<h1>Deja preparada tu base.</h1>
 				<p className="onboarding-lead">
-					Solo necesitamos unas pocas áreas para ordenar lo que venga. Puedes empezar con tres y cambiarlo después.
+					Solo necesitamos unas pocas áreas para ordenar lo que venga. Puedes
+					empezar con tres y cambiarlo después.
 				</p>
-				<form className="onboarding-form" onSubmit={(event) => { event.preventDefault(); void handleSubmit(); }}>
+				<form
+					className="onboarding-form"
+					onSubmit={(event) => {
+						event.preventDefault();
+						void handleSubmit();
+					}}
+				>
 					{areas.map((area, index) => (
 						<div className="onboarding-area" key={index}>
-							<InlineValidation label={`Área ${index + 1}`} placeholder="Trabajo, salud, personal..." required value={area.name} onChange={(value) => updateAreaName(index, value)} validate={(value) => value.trim() ? null : "Añade un nombre para el área."} />
+							<InlineValidation
+								label={`Área ${index + 1}`}
+								placeholder="Trabajo, salud, personal..."
+								required
+								value={area.name}
+								onChange={(value) => updateAreaName(index, value)}
+								validate={(value) =>
+									value.trim() ? null : "Añade un nombre para el área."
+								}
+							/>
 							<div className="mt-4 space-y-3">
 								{area.projects.map((project, projectIndex) => (
 									<div className="flex gap-2" key={projectIndex}>
-										<InlineValidation className="flex-1" label={`Proyecto ${projectIndex + 1}`} placeholder="Proyecto actual" value={project} onChange={(value) => updateProject(index, projectIndex, value)} validate={(value) => value.trim() ? null : "Añade un nombre para el proyecto."} />
+										<InlineValidation
+											className="flex-1"
+											label={`Proyecto ${projectIndex + 1}`}
+											placeholder="Proyecto actual"
+											value={project}
+											onChange={(value) =>
+												updateProject(index, projectIndex, value)
+											}
+											validate={(value) =>
+												value.trim()
+													? null
+													: "Añade un nombre para el proyecto."
+											}
+										/>
 										<button
 											className="btn btn-ghost"
 											type="button"
@@ -222,7 +253,14 @@ export default function OnboardingPage() {
 							{error}
 						</p>
 					)}
-					<LoadingButton className="btn btn-primary w-full" onAction={handleSubmit} pendingLabel="Guardando tu base..." disabled={loading}>Guardar y continuar</LoadingButton>
+					<LoadingButton
+						className="btn btn-primary w-full"
+						onAction={handleSubmit}
+						pendingLabel="Guardando tu base..."
+						disabled={loading}
+					>
+						Guardar y continuar
+					</LoadingButton>
 				</form>
 			</section>
 		</main>

@@ -35,7 +35,7 @@ export default function ProjectPage({
 				data: { user },
 			} = await supabase.auth.getUser();
 			if (!user) {
-				setError("Your session has expired. Please sign in again.");
+				setError("Tu sesión ha caducado. Vuelve a iniciar sesión.");
 				setLoading(false);
 				return;
 			}
@@ -67,7 +67,7 @@ export default function ProjectPage({
 				!areaResult.data ||
 				!projectResult.data
 			)
-				setError("Project not found or unavailable.");
+				setError("No encontramos este proyecto o no está disponible.");
 			else {
 				const loadedProject = projectResult.data as Project;
 				setArea(areaResult.data as Area);
@@ -77,7 +77,8 @@ export default function ProjectPage({
 				setProjectStatus(loadedProject.status);
 				setTasks((taskResult.data ?? []) as Task[]);
 			}
-			if (taskResult.error) setError("We could not load the project tasks.");
+			if (taskResult.error)
+				setError("No pudimos cargar las tareas del proyecto.");
 			setLoading(false);
 		}
 		void load();
@@ -86,7 +87,7 @@ export default function ProjectPage({
 	async function updateProject() {
 		const cleanName = name.trim();
 		if (!cleanName) {
-			setError("A project name is required.");
+			setError("El nombre del proyecto es necesario.");
 			return;
 		}
 		setSaving(true);
@@ -104,7 +105,7 @@ export default function ProjectPage({
 			.select("*")
 			.single();
 		if (updateError || !data)
-			setError("We could not update the project. Please try again.");
+			setError("No pudimos actualizar el proyecto. Inténtalo de nuevo.");
 		else {
 			setProject(data as Project);
 			setEditing(false);
@@ -114,7 +115,9 @@ export default function ProjectPage({
 
 	async function deleteProject() {
 		if (
-			!window.confirm("Delete this project? Its tasks will remain in the area.")
+			!window.confirm(
+				"¿Eliminar este proyecto? Sus tareas permanecerán en el área.",
+			)
 		)
 			return;
 		setSaving(true);
@@ -126,7 +129,7 @@ export default function ProjectPage({
 			.eq("area_id", areaId)
 			.eq("user_id", project?.user_id);
 		if (deleteError) {
-			setError("We could not delete the project. Please try again.");
+			setError("No pudimos eliminar el proyecto. Inténtalo de nuevo.");
 			setSaving(false);
 			return;
 		}
@@ -142,9 +145,9 @@ export default function ProjectPage({
 	if (!project || !area)
 		return (
 			<div className="space-y-4">
-				<p role="alert">{error || "Project not found."}</p>
+				<p role="alert">{error || "No encontramos este proyecto."}</p>
 				<Link className="btn btn-ghost" href={`/areas/${areaId}`}>
-					Back to area
+					Volver al área
 				</Link>
 			</div>
 		);
@@ -174,14 +177,14 @@ export default function ProjectPage({
 								value={name}
 								onChange={(event) => setName(event.target.value)}
 								maxLength={150}
-								aria-label="Project name"
+								aria-label="Nombre del proyecto"
 							/>
 							<textarea
 								className="textarea textarea-bordered w-full"
 								value={description}
 								onChange={(event) => setDescription(event.target.value)}
 								maxLength={1000}
-								placeholder="Description (optional)"
+								placeholder="Descripción (opcional)"
 							/>
 							<select
 								className="select select-bordered"
@@ -189,20 +192,20 @@ export default function ProjectPage({
 								onChange={(event) =>
 									setProjectStatus(event.target.value as ProjectStatus)
 								}
-								aria-label="Project status"
+								aria-label="Estado del proyecto"
 							>
-								<option value="active">Active</option>
-								<option value="paused">Paused</option>
-								<option value="completed">Completed</option>
+								<option value="active">Activo</option>
+								<option value="paused">En pausa</option>
+								<option value="completed">Completado</option>
 							</select>
 							<div className="flex gap-2">
 								<LoadingButton
 									className="btn btn-primary"
 									onAction={updateProject}
-									pendingLabel="Saving..."
+									pendingLabel="Guardando…"
 									disabled={saving}
 								>
-									Save
+									Guardar
 								</LoadingButton>
 								<button
 									className="btn btn-ghost"
@@ -215,7 +218,7 @@ export default function ProjectPage({
 									}}
 									disabled={saving}
 								>
-									Cancel
+									Cancelar
 								</button>
 							</div>
 						</form>
@@ -238,7 +241,7 @@ export default function ProjectPage({
 									type="button"
 									onClick={() => setEditing(true)}
 								>
-									Edit
+									Editar
 								</button>
 								<button
 									className="btn btn-outline btn-error btn-sm"
@@ -246,7 +249,7 @@ export default function ProjectPage({
 									onClick={() => void deleteProject()}
 									disabled={saving}
 								>
-									Delete
+									Eliminar
 								</button>
 							</div>
 						</>
@@ -260,7 +263,7 @@ export default function ProjectPage({
 			)}
 			<section className="rounded-box border border-base-300 bg-base-100 p-5">
 				<div className="flex justify-between text-sm">
-					<span>Progress</span>
+					<span>Avance</span>
 					<strong>{progress}%</strong>
 				</div>
 				<progress
@@ -269,11 +272,11 @@ export default function ProjectPage({
 					max="100"
 				/>{" "}
 				<p className="mt-2 text-sm text-base-content/60">
-					{completed} of {tasks.length} tasks completed
+					{completed} de {tasks.length} tareas completadas
 				</p>
 			</section>
 			<section className="space-y-4">
-				<h2 className="text-2xl font-semibold">Add a task</h2>
+				<h2 className="text-2xl font-semibold">Añadir una tarea</h2>
 				<div className="rounded-box border border-base-300 bg-base-100 p-4">
 					<TaskForm
 						areaId={area.id}

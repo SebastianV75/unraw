@@ -18,7 +18,7 @@ const config = {
 			eyebrow: "Un sistema que hace el trabajo pesado",
 			title: "Tira cualquier cosa. Unraw la pone en su sitio.",
 			subtitle:
-				"Captura una idea, una tarea o un pensamiento a medias. La IA lo convierte en algo que puedes usar.",
+				"Captura una idea, una tarea o un pensamiento a medias. Unraw lo convierte en tareas, ideas y notas listas para usar.",
 			cta: { label: "Únete a la lista", href: "#waitlist" },
 		},
 		features: {
@@ -64,10 +64,11 @@ const config = {
 			eyebrow: "Acceso anticipado",
 			title: "Sé de las primeras personas en capturar sin ordenar.",
 			subtitle:
-				"Déjanos tu email y te avisaremos cuando Unraw esté listo para ayudarte a convertir tus notas en acción.",
+				"Déjanos tu email para recibir acceso anticipado cuando abramos las primeras plazas.",
 			buttonLabel: "Únete a la lista",
 			placeholder: "tu@email.com",
-			successMessage: "Listo. Te avisaremos cuando Unraw esté disponible.",
+			successMessage:
+				"Tu lugar quedó reservado. Te escribiremos cuando Unraw esté listo.",
 		},
 	},
 	ai: {

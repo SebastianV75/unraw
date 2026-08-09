@@ -101,7 +101,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 					href="/capture"
 					aria-label="Abrir captura de Unraw"
 				>
-					<Logo className="app-shell-brand-mark" />
+					<Logo variant="appMark" className="app-shell-brand-mark" />
 					<span>Unraw</span>
 				</Link>
 				<nav className="app-shell-nav">{renderNavigation()}</nav>
@@ -158,7 +158,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 					href="/capture"
 					aria-label="Abrir captura de Unraw"
 				>
-					<Logo className="app-shell-brand-mark" />
+					<Logo variant="appMark" className="app-shell-brand-mark" />
 					<span>Unraw</span>
 				</Link>
 				<div className="app-shell-mobile-actions">
@@ -182,7 +182,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 						className="app-shell-icon-button"
 						type="button"
 						onClick={() => setMobileNavOpen((current) => !current)}
-						aria-label={mobileNavOpen ? "Cerrar navegación" : "Abrir navegación"}
+						aria-label={
+							mobileNavOpen ? "Cerrar navegación" : "Abrir navegación"
+						}
 						aria-expanded={mobileNavOpen}
 					>
 						{mobileNavOpen ? (

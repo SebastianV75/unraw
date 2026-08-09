@@ -38,7 +38,7 @@ export default function AreaPage({
 			data: { user },
 		} = await supabase.auth.getUser();
 		if (!user) {
-			setError("Your session has expired. Please sign in again.");
+			setError("Tu sesión ha caducado. Vuelve a iniciar sesión.");
 			setLoading(false);
 			return;
 		}
@@ -70,7 +70,7 @@ export default function AreaPage({
 					.order("created_at", { ascending: false }),
 			]);
 		if (areaResult.error || !areaResult.data)
-			setError("Area not found or unavailable.");
+			setError("No encontramos esta área o no está disponible.");
 		else {
 			setArea(areaResult.data as Area);
 			setAreaName(areaResult.data.name);
@@ -79,7 +79,7 @@ export default function AreaPage({
 			setIdeas((ideaResult.data ?? []) as Idea[]);
 		}
 		if (projectResult.error || taskResult.error || ideaResult.error)
-			setError("Some area content could not be loaded.");
+			setError("No pudimos cargar parte del contenido del área.");
 		setLoading(false);
 	}, [areaId]);
 
@@ -90,7 +90,7 @@ export default function AreaPage({
 	async function updateArea() {
 		const cleanName = areaName.trim();
 		if (!cleanName) {
-			setError("An area name is required.");
+			setError("El nombre del área es necesario.");
 			return;
 		}
 		setSaving(true);
@@ -101,7 +101,8 @@ export default function AreaPage({
 			.eq("user_id", area?.user_id)
 			.select("*")
 			.single();
-		if (updateError || !data) setError("We could not update the area.");
+		if (updateError || !data)
+			setError("No pudimos actualizar el área. Inténtalo de nuevo.");
 		else {
 			setArea(data as Area);
 			setEditing(false);
@@ -110,20 +111,21 @@ export default function AreaPage({
 	}
 
 	async function deleteArea() {
-		if (!window.confirm("Delete this area and all its content?")) return;
+		if (!window.confirm("¿Eliminar esta área y todo su contenido?")) return;
 		const { error: deleteError } = await createClient()
 			.from("areas")
 			.delete()
 			.eq("id", areaId)
 			.eq("user_id", area?.user_id);
-		if (deleteError) setError("We could not delete the area.");
+		if (deleteError)
+			setError("No pudimos eliminar el área. Inténtalo de nuevo.");
 		else router.replace("/areas");
 	}
 
 	async function createProject() {
 		const cleanName = projectName.trim();
 		if (!cleanName || !area) {
-			setError("A project name is required.");
+			setError("El nombre del proyecto es necesario.");
 			return;
 		}
 		setSaving(true);
@@ -138,7 +140,8 @@ export default function AreaPage({
 			})
 			.select("*")
 			.single();
-		if (insertError || !data) setError("We could not create the project.");
+		if (insertError || !data)
+			setError("No pudimos crear el proyecto. Inténtalo de nuevo.");
 		else {
 			setProjects((current) => [...current, data as Project]);
 			setProjectName("");
@@ -156,9 +159,9 @@ export default function AreaPage({
 	if (!area)
 		return (
 			<div className="space-y-4">
-				<p role="alert">{error || "Area not found."}</p>
+				<p role="alert">{error || "No encontramos esta área."}</p>
 				<Link className="btn btn-ghost" href="/areas">
-					Back to areas
+					Volver a áreas
 				</Link>
 			</div>
 		);
@@ -184,10 +187,10 @@ export default function AreaPage({
 							<LoadingButton
 								className="btn btn-primary"
 								onAction={updateArea}
-								pendingLabel="Saving..."
+								pendingLabel="Guardando…"
 								disabled={saving}
 							>
-								Save
+								Guardar
 							</LoadingButton>
 							<button
 								className="btn btn-ghost"
@@ -198,13 +201,13 @@ export default function AreaPage({
 								}}
 								disabled={saving}
 							>
-								Cancel
+								Cancelar
 							</button>
 						</form>
 					) : (
 						<>
 							<Link className="text-sm text-primary" href="/areas">
-								← Areas
+								← Áreas
 							</Link>
 							<h1 className="mt-2 text-4xl font-bold">{area.name}</h1>
 						</>
@@ -217,7 +220,7 @@ export default function AreaPage({
 							type="button"
 							onClick={() => setEditing(true)}
 						>
-							Edit
+							Editar
 						</button>
 					)}
 					<button
@@ -226,7 +229,7 @@ export default function AreaPage({
 						onClick={deleteArea}
 						disabled={saving}
 					>
-						Delete
+						Eliminar
 					</button>
 				</div>
 			</div>
@@ -237,9 +240,9 @@ export default function AreaPage({
 			)}
 			<section className="space-y-4">
 				<div>
-					<h2 className="text-2xl font-semibold">Projects</h2>
+					<h2 className="text-2xl font-semibold">Proyectos</h2>
 					<p className="text-base-content/60">
-						Group related tasks and track their progress.
+						Agrupa tareas relacionadas y sigue su avance.
 					</p>
 				</div>
 				<form
@@ -251,14 +254,14 @@ export default function AreaPage({
 				>
 					<input
 						className="input input-bordered"
-						placeholder="Project name"
+						placeholder="Nombre del proyecto"
 						value={projectName}
 						onChange={(event) => setProjectName(event.target.value)}
 						maxLength={150}
 					/>
 					<input
 						className="input input-bordered"
-						placeholder="Description (optional)"
+						placeholder="Descripción (opcional)"
 						value={projectDescription}
 						onChange={(event) => setProjectDescription(event.target.value)}
 						maxLength={1000}
@@ -266,7 +269,7 @@ export default function AreaPage({
 					<LoadingButton
 						className="btn btn-primary"
 						onAction={createProject}
-						pendingLabel="Creating..."
+						pendingLabel="Creando…"
 						disabled={saving || !projectName.trim()}
 					>
 						Add project
@@ -274,7 +277,7 @@ export default function AreaPage({
 				</form>
 				{projects.length === 0 ? (
 					<p className="rounded-box border border-dashed border-base-300 p-6 text-base-content/60">
-						No projects yet.
+						Aún no hay proyectos.
 					</p>
 				) : (
 					<div className="grid gap-4 md:grid-cols-2">
@@ -300,9 +303,9 @@ export default function AreaPage({
 			</section>
 			<section className="space-y-4">
 				<div>
-					<h2 className="text-2xl font-semibold">Tasks</h2>
+					<h2 className="text-2xl font-semibold">Tareas</h2>
 					<p className="text-base-content/60">
-						All tasks in this area, including project tasks.
+						Todas las tareas de esta área, también las de sus proyectos.
 					</p>
 				</div>
 				<div className="rounded-box border border-base-300 bg-base-100 p-4">
@@ -327,7 +330,7 @@ export default function AreaPage({
 				<div>
 					<h2 className="text-2xl font-semibold">Ideas</h2>
 					<p className="text-base-content/60">
-						Capture possibilities without turning them into tasks.
+						Guarda posibilidades sin convertirlas en tareas.
 					</p>
 				</div>
 				<div className="rounded-box border border-base-300 bg-base-100 p-4">

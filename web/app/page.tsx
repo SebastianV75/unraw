@@ -1,12 +1,14 @@
 import Link from "next/link";
 import Footer from "@/components/layout/Footer";
 import Logo from "@/components/Logo";
-import { CapturePreview } from "@/components/landing/CapturePreview";
+import { Accordion } from "@/components/interior/accordion";
+import { CircleStory } from "@/components/landing/CircleStory";
 import { LandingReveal } from "@/components/landing/LandingReveal";
 import { WaitlistForm } from "@/components/landing/WaitlistForm";
 import config from "@/config";
 
-const { hero, features, faq, waitlist } = config.landing;
+const { hero, faq, waitlist } = config.landing;
+
 export default function HomePage() {
 	return (
 		<div className="landing-page landing-v2">
@@ -38,92 +40,24 @@ export default function HomePage() {
 			</header>
 
 			<main>
-				<section className="landing-v2-hero">
-					<div className="landing-v2-hero-copy">
-						<div className="landing-v2-kicker">
-							<span className="landing-pixel-label">
-								CAPTURE / PROCESS / MOVE
-							</span>
-							<span className="landing-v2-kicker-dot" aria-hidden="true" />
-						</div>
-						<h1>{hero.title}</h1>
-						<p className="landing-v2-hero-lead">{hero.subtitle}</p>
-						<div className="landing-v2-hero-actions">
-							<Link href={hero.cta.href} className="landing-v2-primary-cta">
-								{hero.cta.label}
-								<span aria-hidden="true">↗</span>
-							</Link>
-							<Link href="#how-it-works" className="landing-v2-text-link">
-								Ver la transformación
-							</Link>
-						</div>
-						<p className="landing-v2-hero-footnote">
-							Acceso anticipado. Sin spam. Sin otro sistema que mantener.
-						</p>
-					</div>
-					<div className="landing-v2-hero-demo">
-						<CapturePreview />
-					</div>
-				</section>
+				<CircleStory />
 
 				<LandingReveal delay={0.04}>
 					<section
-						className="landing-v2-manifesto"
-						aria-label="El problema que resuelve Unraw"
+						id="system"
+						className="landing-v2-ownership landing-circle-system"
 					>
-						<div className="landing-v2-manifesto-topline">
-							<span className="landing-pixel-label">THE MISSING BRIDGE</span>
-							<span className="landing-pixel-label">01 / 04</span>
-						</div>
-						<h2>
-							No te falta disciplina.
-							<br />
-							<span>Te falta el puente.</span>
-						</h2>
-						<div className="landing-v2-manifesto-bottom">
-							<p>
-								Capturar es fácil. Procesar cada nota cuando ya estás cansada es
-								el trabajo que Unraw hace por ti.
-							</p>
-							<span className="landing-pixel-label">RAW IN / CLEAR OUT</span>
-						</div>
-					</section>
-				</LandingReveal>
-
-				<LandingReveal delay={0.08}>
-					<section id="how-it-works" className="landing-v2-flow">
-						<div className="landing-v2-section-intro">
-							<h2>Deja de ordenar antes de empezar.</h2>
-							<p>
-								Tu única tarea es sacar la idea de la cabeza. Lo demás puede
-								esperar.
-							</p>
-						</div>
-						<div className="landing-v2-flow-list">
-							{features.items.map((item, index) => (
-								<div className="landing-v2-flow-row" key={item.title}>
-									<span className="landing-v2-flow-index">0{index + 1}</span>
-									<h3>{item.title}</h3>
-									<p>{item.body}</p>
-									<span className="landing-v2-flow-arrow" aria-hidden="true">
-										↗
-									</span>
-								</div>
-							))}
-						</div>
-					</section>
-				</LandingReveal>
-
-				<LandingReveal delay={0.12}>
-					<section id="system" className="landing-v2-ownership">
 						<div className="landing-v2-ownership-copy">
-							<h2>Tu sistema sigue siendo tuyo.</h2>
+							<span className="landing-pixel-label landing-v2-section-number">
+								DESPUÉS / TU SISTEMA
+							</span>
+							<h2>Lo ordena. No te encierra.</h2>
 							<p>
-								Unraw no te pide aprender una metodología. Entiende lo que
-								capturas y lo deja listo en el lugar correcto.
+								Unraw entiende lo que capturas y lo devuelve listo al sistema
+								que ya es tuyo.
 							</p>
-							<Link href={hero.cta.href} className="landing-v2-text-link">
-								Quiero verlo en acción <span aria-hidden="true">↗</span>
+							<Link href="#circle-story" className="landing-v2-text-link">
+								Volver a la transformación <span aria-hidden="true">↑</span>
 							</Link>
 						</div>
 						<div
@@ -158,40 +92,48 @@ export default function HomePage() {
 					</section>
 				</LandingReveal>
 
-				<section id="waitlist" className="landing-v2-waitlist">
-					<div className="landing-v2-waitlist-copy">
-						<span className="landing-pixel-label">ACCESO ANTICIPADO</span>
-						<h2>{waitlist.title}</h2>
-						<p>{waitlist.subtitle}</p>
-					</div>
-					<WaitlistForm
-						buttonLabel={waitlist.buttonLabel}
-						placeholder={waitlist.placeholder}
-						successMessage={waitlist.successMessage}
-					/>
-				</section>
+				<LandingReveal delay={0.06}>
+					<section id="faq" className="landing-v2-faq landing-circle-faq">
+						<div className="landing-v2-section-intro">
+							<div>
+								<span className="landing-pixel-label landing-v2-section-number">
+									ANTES DE SOLTAR
+								</span>
+								<h2>Lo que quieres saber.</h2>
+							</div>
+						</div>
+						<div className="landing-v2-faq-list">
+							<Accordion
+								items={faq.items.map((item, index) => ({
+									id: `faq-${index + 1}`,
+									title: item.q,
+									content: item.a,
+								}))}
+								className="landing-v2-faq-accordion"
+							/>
+						</div>
+					</section>
+				</LandingReveal>
 
-				<section id="faq" className="landing-v2-faq">
-					<div className="landing-v2-section-intro">
-						<h2>Lo que seguramente quieres saber.</h2>
-					</div>
-					<div className="landing-v2-faq-list">
-						{faq.items.map((item) => (
-							<details className="landing-v2-faq-item" key={item.q}>
-								<summary>{item.q}</summary>
-								<p>{item.a}</p>
-							</details>
-						))}
-					</div>
-				</section>
-
-				<section className="landing-v2-closing">
-					<h2>Deja que tu cabeza vuelva a ser un lugar.</h2>
-					<Link href={hero.cta.href} className="landing-v2-primary-cta">
-						{hero.cta.label}
-						<span aria-hidden="true">↗</span>
-					</Link>
-				</section>
+				<LandingReveal delay={0.08}>
+					<section
+						id="waitlist"
+						className="landing-v2-waitlist landing-circle-final-waitlist"
+					>
+						<div className="landing-v2-waitlist-copy">
+							<span className="landing-pixel-label landing-v2-section-number">
+								ACCESO ANTICIPADO
+							</span>
+							<h2>Deja que tu cabeza vuelva a ser un lugar.</h2>
+							<p>{waitlist.subtitle}</p>
+						</div>
+						<WaitlistForm
+							buttonLabel={waitlist.buttonLabel}
+							placeholder={waitlist.placeholder}
+							successMessage={waitlist.successMessage}
+						/>
+					</section>
+				</LandingReveal>
 			</main>
 
 			<Footer />

@@ -35,18 +35,19 @@ export function CapturePreview() {
 	return (
 		<div
 			className="landing-demo"
+			data-phase={phase}
 			aria-label="Demostración de Unraw"
 			aria-busy={phase === "processing"}
 		>
 			<div className="landing-demo-topbar">
 				<span className="landing-pixel-label">CAPTURE / 001</span>
-				<span className="landing-demo-status">
+				<span className={`landing-demo-status is-${phase}`} aria-live="polite">
 					<span className="landing-demo-status-dot" aria-hidden="true" />
 					{phase === "processing"
 						? "Procesando"
 						: phase === "clear"
 							? "Lista"
-							: "Sin ordenar"}
+							: "En bruto"}
 				</span>
 			</div>
 			<div className="landing-demo-body">
@@ -65,13 +66,13 @@ export function CapturePreview() {
 							transition={{ duration: 0.2, ease: DEMO_EASE }}
 						>
 							<span className="landing-pixel-label landing-demo-label-raw">
-								RAW NOTE
+								NOTA EN BRUTO
 							</span>
 							<p className="landing-demo-raw-text">{sampleNote}</p>
 							<div className="landing-demo-footer">
 								<span>Escribe como te salga.</span>
 								<button type="button" onClick={organize}>
-									Ordenar esta nota{" "}
+									Procesar esta nota{" "}
 									<ArrowRight4
 										size={14}
 										color="currentColor"
@@ -96,8 +97,8 @@ export function CapturePreview() {
 								weight="Outline"
 								className="landing-demo-loader"
 							/>
-							<span className="landing-pixel-label">SORTING THE RAW</span>
-							<p>Encontrando qué necesita acción y qué merece quedarse.</p>
+							<span className="landing-pixel-label">PROCESANDO TU NOTA</span>
+							<p>Separando lo que necesita acción de lo que merece quedarse.</p>
 						</motion.div>
 					)}
 					{phase === "clear" && (
@@ -109,9 +110,9 @@ export function CapturePreview() {
 							transition={{ duration: 0.25, ease: DEMO_EASE }}
 						>
 							<div className="landing-demo-result-heading">
-								<span className="landing-pixel-label">CLEAR OUTPUT</span>
+								<span className="landing-pixel-label">LISTO PARA USAR</span>
 								<button type="button" onClick={() => setPhase("raw")}>
-									Otra nota
+									Probar otra nota <span aria-hidden="true">↺</span>
 								</button>
 							</div>
 							<div className="landing-demo-items">

@@ -29,7 +29,12 @@ const commands: CommandItem[] = [
 		href: "/overview",
 		keywords: "tareas hoy tablero resumen",
 	},
-	{ label: "Inbox", description: "Revisa capturas sin destino", href: "/inbox", keywords: "bandeja sin hogar sin destino" },
+	{
+		label: "Inbox",
+		description: "Revisa capturas sin destino",
+		href: "/inbox",
+		keywords: "bandeja sin hogar sin destino",
+	},
 	{
 		label: "Áreas y proyectos",
 		description: "Explora tu sistema",
@@ -125,9 +130,16 @@ export function CommandPalette() {
 				onClick={openPalette}
 				aria-haspopup="dialog"
 				aria-expanded={open}
-				>
-						<Search className="command-launcher-icon" size={15} color="currentColor" weight="Outline" strokeWidth={1.7} aria-hidden="true" />
-					<span>Buscar en Unraw</span>
+			>
+				<Search
+					className="command-launcher-icon"
+					size={15}
+					color="currentColor"
+					weight="Outline"
+					strokeWidth={1.7}
+					aria-hidden="true"
+				/>
+				<span>Buscar en Unraw</span>
 				<kbd>⌘K</kbd>
 			</button>
 
@@ -145,8 +157,15 @@ export function CommandPalette() {
 						aria-modal="true"
 						aria-labelledby="command-title"
 					>
-							<div className="command-search-row">
-									<Search className="command-search-icon" size={17} color="currentColor" weight="Outline" strokeWidth={1.7} aria-hidden="true" />
+						<div className="command-search-row">
+							<Search
+								className="command-search-icon"
+								size={17}
+								color="currentColor"
+								weight="Outline"
+								strokeWidth={1.7}
+								aria-hidden="true"
+							/>
 							<input
 								ref={inputRef}
 								id="command-title"
@@ -160,16 +179,26 @@ export function CommandPalette() {
 								placeholder="Buscar páginas…"
 								aria-label="Buscar páginas"
 							/>
-								<button
-									className="command-close"
+							<button
+								className="command-close"
 								type="button"
 								onClick={close}
-									aria-label="Cerrar búsqueda"
-								>
-										<X size={16} color="currentColor" weight="Outline" strokeWidth={1.7} aria-hidden="true" />
+								aria-label="Cerrar búsqueda"
+							>
+								<X
+									size={16}
+									color="currentColor"
+									weight="Outline"
+									strokeWidth={1.7}
+									aria-hidden="true"
+								/>
 							</button>
 						</div>
-						<div className="command-results" role="listbox" aria-label="Páginas">
+						<div
+							className="command-results"
+							role="listbox"
+							aria-label="Páginas"
+						>
 							{filteredCommands.length > 0 ? (
 								filteredCommands.map((command, index) => (
 									<button
@@ -185,17 +214,42 @@ export function CommandPalette() {
 											<strong>{command.label}</strong>
 											<small>{command.description}</small>
 										</span>
-											<ArrowRight className="command-result-arrow" size={15} color="currentColor" weight="Outline" strokeWidth={1.7} aria-hidden="true" />
+										<ArrowRight
+											className="command-result-arrow"
+											size={15}
+											color="currentColor"
+											weight="Outline"
+											strokeWidth={1.7}
+											aria-hidden="true"
+										/>
 									</button>
 								))
 							) : (
 								<p className="command-empty">No encontramos páginas.</p>
 							)}
 						</div>
-							<div className="command-footer">
-									<span><ArrowDown2 size={12} color="currentColor" weight="Outline" strokeWidth={1.7} aria-hidden="true" /> Navegar</span>
-									<span><ArrowRight4 size={12} color="currentColor" weight="Outline" strokeWidth={1.7} aria-hidden="true" /> Abrir</span>
-								<span>Esc Cerrar</span>
+						<div className="command-footer">
+							<span>
+								<ArrowDown2
+									size={12}
+									color="currentColor"
+									weight="Outline"
+									strokeWidth={1.7}
+									aria-hidden="true"
+								/>{" "}
+								Navegar
+							</span>
+							<span>
+								<ArrowRight4
+									size={12}
+									color="currentColor"
+									weight="Outline"
+									strokeWidth={1.7}
+									aria-hidden="true"
+								/>{" "}
+								Abrir
+							</span>
+							<span>Esc Cerrar</span>
 						</div>
 					</section>
 				</div>

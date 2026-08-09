@@ -39,7 +39,6 @@ export function WaitlistForm({
 
 		setError("");
 		if (validationError) {
-			setError(validationError);
 			throw new Error(validationError);
 		}
 
@@ -92,12 +91,12 @@ export function WaitlistForm({
 					/>
 				</span>
 				<div className="landing-waitlist-confirmation-copy">
-					<span className="landing-pixel-label">YOU&apos;RE IN</span>
-					<h3>Ya estás dentro.</h3>
+					<span className="landing-pixel-label">ACCESO RESERVADO</span>
+					<h3>Ya estás en la lista.</h3>
 					<p>{successMessage}</p>
 				</div>
 				<p className="landing-waitlist-confirmation-note">
-					Nosotros nos encargamos del resto.
+					Puedes volver a lo tuyo.
 				</p>
 			</motion.div>
 		);
@@ -127,7 +126,7 @@ export function WaitlistForm({
 						setError("");
 					}}
 					validate={validateEmail}
-					hint="Te avisaremos cuando Unraw esté listo."
+					hint="Te avisaremos cuando abramos el acceso."
 					placeholder={placeholder}
 					autoComplete="email"
 					maxLength={254}
@@ -137,7 +136,8 @@ export function WaitlistForm({
 					type="submit"
 					className="landing-waitlist-submit"
 					onAction={submit}
-					onError={(actionError) => {
+					onError={(actionError: unknown) => {
+						if (validateEmail(email.trim().toLowerCase())) return;
 						if (!error) {
 							setError(
 								actionError instanceof Error
@@ -169,7 +169,7 @@ export function WaitlistForm({
 				</p>
 			)}
 			<p className="landing-waitlist-note">
-				Sin spam. Solo novedades cuando Unraw esté listo.
+				Sin spam. Solo novedades importantes.
 			</p>
 		</form>
 	);

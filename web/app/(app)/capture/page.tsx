@@ -27,8 +27,12 @@ export default function CapturePage() {
 	const [projects, setProjects] = useState<Project[]>([]);
 	const [result, setResult] = useState<CaptureOutput | null>(null);
 	const [approved, setApproved] = useState<Record<string, boolean>>({});
-	const [assignedAreas, setAssignedAreas] = useState<Record<string, string | null>>({});
-	const [rejectedItems, setRejectedItems] = useState<Record<string, boolean>>({});
+	const [assignedAreas, setAssignedAreas] = useState<
+		Record<string, string | null>
+	>({});
+	const [rejectedItems, setRejectedItems] = useState<Record<string, boolean>>(
+		{},
+	);
 	const [editingItem, setEditingItem] = useState<string | null>(null);
 	const [editedValues, setEditedValues] = useState<Record<string, string>>({});
 	const [projectAreas, setProjectAreas] = useState<Record<string, string>>({});
@@ -136,11 +140,11 @@ export default function CapturePage() {
 			if (!response.ok)
 				throw new Error(body.error || "No pudimos procesar la nota.");
 			setResult(body);
-				setApproved({});
-				setAssignedAreas({});
-				setRejectedItems({});
-				setEditingItem(null);
-				setEditedValues({});
+			setApproved({});
+			setAssignedAreas({});
+			setRejectedItems({});
+			setEditingItem(null);
+			setEditedValues({});
 			setProjectAreas({});
 		} catch (caught) {
 			setError(
@@ -152,27 +156,90 @@ export default function CapturePage() {
 		setProcessing(false);
 	}
 
-		async function saveResults() {
-			if (!result) return;
+	async function saveResults() {
+		if (!result) return;
 		setSaving(true);
 		setError("");
 		setSuccess("");
-			try {
-				const assignments: Record<string, string | null> = {};
-				const confirmedSuggestions = suggestions;
-					const tasks = result.tasks.map((item, index) => ({ item, index })).filter(({ index }) => !rejectedItems[`task:${index}`]);
-					const ideas = result.ideas.map((item, index) => ({ item, index })).filter(({ index }) => !rejectedItems[`idea:${index}`]);
-					const secondBrain = result.second_brain.map((item, index) => ({ item, index })).filter(({ index }) => !rejectedItems[`knowledge:${index}`]);
-					tasks.forEach(({ item, index }, outputIndex) => { assignments[`task:${outputIndex}`] = selectedArea("task", index, item.area_id); assignments[`task-project:${outputIndex}`] = item.project_id; });
-					ideas.forEach(({ item, index }, outputIndex) => { assignments[`idea:${outputIndex}`] = selectedArea("idea", index, item.area_id); });
-					secondBrain.forEach(({ item, index }, outputIndex) => { assignments[`knowledge:${outputIndex}`] = selectedArea("knowledge", index, item.area_id); });
-				confirmedSuggestions.forEach((item) => { if (approved[suggestionKey(item)]) { assignments[`suggestion:${item.type}:${item.name.toLowerCase()}`] = "00000000-0000-0000-0000-000000000000"; if (item.type === "new_project") assignments[`suggestion-area:${item.type}:${item.name.toLowerCase()}`] = projectAreas[suggestionKey(item)] || item.area_id || null; } });
-				const key = idempotencyKey || crypto.randomUUID(); setIdempotencyKey(key);
-				const response = await fetch("/api/captures/save", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ idempotency_key: key, raw_note: rawNote, confirmed_output: { ...result, tasks: tasks.map(({ item }) => item), ideas: ideas.map(({ item }) => item), second_brain: secondBrain.map(({ item }) => item), suggestions: confirmedSuggestions }, assignments }) });
-			const body = await response.json() as { error?: string };
-			if (!response.ok) throw new Error(body.error || "No pudimos guardar la captura.");
-			setSuccess("Elementos confirmados guardados. Lo que no tenga destino está en Inbox."); setResult(null); setRawNote(""); setIdempotencyKey(""); sessionStorage.removeItem("unraw-capture-draft");
-		} catch (caught) { setError(caught instanceof Error ? caught.message : "No pudimos guardar la captura."); }
+		try {
+			const assignments: Record<string, string | null> = {};
+			const confirmedSuggestions = suggestions;
+			const tasks = result.tasks
+				.map((item, index) => ({ item, index }))
+				.filter(({ index }) => !rejectedItems[`task:${index}`]);
+			const ideas = result.ideas
+				.map((item, index) => ({ item, index }))
+				.filter(({ index }) => !rejectedItems[`idea:${index}`]);
+			const secondBrain = result.second_brain
+				.map((item, index) => ({ item, index }))
+				.filter(({ index }) => !rejectedItems[`knowledge:${index}`]);
+			tasks.forEach(({ item, index }, outputIndex) => {
+				assignments[`task:${outputIndex}`] = selectedArea(
+					"task",
+					index,
+					item.area_id,
+				);
+				assignments[`task-project:${outputIndex}`] = item.project_id;
+			});
+			ideas.forEach(({ item, index }, outputIndex) => {
+				assignments[`idea:${outputIndex}`] = selectedArea(
+					"idea",
+					index,
+					item.area_id,
+				);
+			});
+			secondBrain.forEach(({ item, index }, outputIndex) => {
+				assignments[`knowledge:${outputIndex}`] = selectedArea(
+					"knowledge",
+					index,
+					item.area_id,
+				);
+			});
+			confirmedSuggestions.forEach((item) => {
+				if (approved[suggestionKey(item)]) {
+					assignments[`suggestion:${item.type}:${item.name.toLowerCase()}`] =
+						"00000000-0000-0000-0000-000000000000";
+					if (item.type === "new_project")
+						assignments[
+							`suggestion-area:${item.type}:${item.name.toLowerCase()}`
+						] = projectAreas[suggestionKey(item)] || item.area_id || null;
+				}
+			});
+			const key = idempotencyKey || crypto.randomUUID();
+			setIdempotencyKey(key);
+			const response = await fetch("/api/captures/save", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					idempotency_key: key,
+					raw_note: rawNote,
+					confirmed_output: {
+						...result,
+						tasks: tasks.map(({ item }) => item),
+						ideas: ideas.map(({ item }) => item),
+						second_brain: secondBrain.map(({ item }) => item),
+						suggestions: confirmedSuggestions,
+					},
+					assignments,
+				}),
+			});
+			const body = (await response.json()) as { error?: string };
+			if (!response.ok)
+				throw new Error(body.error || "No pudimos guardar la captura.");
+			setSuccess(
+				"Elementos confirmados guardados. Lo que no tenga destino está en Inbox.",
+			);
+			setResult(null);
+			setRawNote("");
+			setIdempotencyKey("");
+			sessionStorage.removeItem("unraw-capture-draft");
+		} catch (caught) {
+			setError(
+				caught instanceof Error
+					? caught.message
+					: "No pudimos guardar la captura.",
+			);
+		}
 		setSaving(false);
 	}
 
@@ -180,22 +247,129 @@ export default function CapturePage() {
 	const projectNames = new Map(
 		projects.map((project) => [project.id, project.name]),
 	);
-	const selectedArea = (kind: string, index: number, fallback: string | null) => Object.prototype.hasOwnProperty.call(assignedAreas, `${kind}:${index}`) ? assignedAreas[`${kind}:${index}`] : fallback;
-	const areaSelect = (kind: string, index: number, current: string | null) => <select className="select select-bordered select-xs mt-2" value={selectedArea(kind, index, current) ?? ""} onChange={(event) => setAssignedAreas((areas) => ({ ...areas, [`${kind}:${index}`]: event.target.value || null }))} aria-label={`Asignar ${kind} ${index + 1} a un área`}><option value="">Sin destino todavía</option>{areas.map((area) => <option value={area.id} key={area.id}>{area.name}</option>)}</select>;
+	const selectedArea = (
+		kind: string,
+		index: number,
+		fallback: string | null,
+	) =>
+		Object.prototype.hasOwnProperty.call(assignedAreas, `${kind}:${index}`)
+			? assignedAreas[`${kind}:${index}`]
+			: fallback;
+	const areaSelect = (kind: string, index: number, current: string | null) => (
+		<select
+			className="select select-bordered select-xs mt-2"
+			value={selectedArea(kind, index, current) ?? ""}
+			onChange={(event) =>
+				setAssignedAreas((areas) => ({
+					...areas,
+					[`${kind}:${index}`]: event.target.value || null,
+				}))
+			}
+			aria-label={`Asignar ${kind} ${index + 1} a un área`}
+		>
+			<option value="">Sin destino todavía</option>
+			{areas.map((area) => (
+				<option value={area.id} key={area.id}>
+					{area.name}
+				</option>
+			))}
+		</select>
+	);
 	const editKey = (kind: string, index: number) => `${kind}:${index}`;
-	const beginEdit = (kind: string, index: number, value: string) => { setEditedValues((current) => ({ ...current, [editKey(kind, index)]: value })); setEditingItem(editKey(kind, index)); };
+	const beginEdit = (kind: string, index: number, value: string) => {
+		setEditedValues((current) => ({
+			...current,
+			[editKey(kind, index)]: value,
+		}));
+		setEditingItem(editKey(kind, index));
+	};
 	const saveEdit = (kind: string, index: number) => {
 		const key = editKey(kind, index);
 		const value = editedValues[key]?.trim();
 		if (!value || !result) return;
-		setResult({ ...result, [kind === "task" ? "tasks" : kind === "idea" ? "ideas" : "second_brain"]: (kind === "task" ? result.tasks : kind === "idea" ? result.ideas : result.second_brain).map((item, itemIndex) => itemIndex === index ? (kind === "task" ? { ...item, title: value } : kind === "idea" ? { ...item, content: value } : { ...item, title: value }) : item) } as CaptureOutput);
+		setResult({
+			...result,
+			[kind === "task" ? "tasks" : kind === "idea" ? "ideas" : "second_brain"]:
+				(kind === "task"
+					? result.tasks
+					: kind === "idea"
+						? result.ideas
+						: result.second_brain
+				).map((item, itemIndex) =>
+					itemIndex === index
+						? kind === "task"
+							? { ...item, title: value }
+							: kind === "idea"
+								? { ...item, content: value }
+								: { ...item, title: value }
+						: item,
+				),
+		} as CaptureOutput);
 		setEditingItem(null);
 	};
 	const reviewControls = (kind: string, index: number, value: string) => {
 		const key = editKey(kind, index);
-		if (rejectedItems[key]) return <p className="mt-3 text-sm text-base-content/60">Descartado; este elemento no se guardará.</p>;
-		if (editingItem === key) return <div className="mt-3 space-y-2"><label className="sr-only" htmlFor={`edit-${key}`}>Editar {kind} {index + 1}</label><textarea id={`edit-${key}`} className="textarea textarea-bordered w-full" value={editedValues[key] ?? value} onChange={(event) => setEditedValues((current) => ({ ...current, [key]: event.target.value }))} /><div className="flex gap-2"><button type="button" className="btn btn-primary btn-xs" onClick={() => saveEdit(kind, index)}>Guardar edición</button><button type="button" className="btn btn-ghost btn-xs" onClick={() => setEditingItem(null)}>Cancelar</button></div></div>;
-		return <div className="mt-3 flex gap-2"><button type="button" className="btn btn-ghost btn-xs" onClick={() => beginEdit(kind, index, value)}>Editar elemento</button><button type="button" className="btn btn-ghost btn-xs text-error" onClick={() => setRejectedItems((current) => ({ ...current, [key]: true }))}>Rechazar elemento</button></div>;
+		if (rejectedItems[key])
+			return (
+				<p className="mt-3 text-sm text-base-content/60">
+					Descartado; este elemento no se guardará.
+				</p>
+			);
+		if (editingItem === key)
+			return (
+				<div className="mt-3 space-y-2">
+					<label className="sr-only" htmlFor={`edit-${key}`}>
+						Editar {kind} {index + 1}
+					</label>
+					<textarea
+						id={`edit-${key}`}
+						className="textarea textarea-bordered w-full"
+						value={editedValues[key] ?? value}
+						onChange={(event) =>
+							setEditedValues((current) => ({
+								...current,
+								[key]: event.target.value,
+							}))
+						}
+					/>
+					<div className="flex gap-2">
+						<button
+							type="button"
+							className="btn btn-primary btn-xs"
+							onClick={() => saveEdit(kind, index)}
+						>
+							Guardar edición
+						</button>
+						<button
+							type="button"
+							className="btn btn-ghost btn-xs"
+							onClick={() => setEditingItem(null)}
+						>
+							Cancelar
+						</button>
+					</div>
+				</div>
+			);
+		return (
+			<div className="mt-3 flex gap-2">
+				<button
+					type="button"
+					className="btn btn-ghost btn-xs"
+					onClick={() => beginEdit(kind, index, value)}
+				>
+					Editar elemento
+				</button>
+				<button
+					type="button"
+					className="btn btn-ghost btn-xs text-error"
+					onClick={() =>
+						setRejectedItems((current) => ({ ...current, [key]: true }))
+					}
+				>
+					Rechazar elemento
+				</button>
+			</div>
+		);
 	};
 	const resultCount = result
 		? result.tasks.length + result.ideas.length + result.second_brain.length
@@ -209,14 +383,26 @@ export default function CapturePage() {
 						href="/overview"
 						aria-label="Volver al resumen"
 					>
-						<ArrowLeft4 size={15} color="currentColor" weight="Outline" strokeWidth={1.7} aria-hidden="true" />
+						<ArrowLeft4
+							size={15}
+							color="currentColor"
+							weight="Outline"
+							strokeWidth={1.7}
+							aria-hidden="true"
+						/>
 						<span>Resumen</span>
 					</Link>
 					<span className="capture-document-divider">/</span>
 					<span className="truncate">Capturar</span>
 				</div>
 				<div className="capture-document-context">
-					<DocumentText size={14} color="currentColor" weight="Outline" strokeWidth={1.7} aria-hidden="true" />
+					<DocumentText
+						size={14}
+						color="currentColor"
+						weight="Outline"
+						strokeWidth={1.7}
+						aria-hidden="true"
+					/>
 					Markdown
 				</div>
 				<div className="flex items-center gap-3">
@@ -225,7 +411,13 @@ export default function CapturePage() {
 						type="button"
 						aria-label="Más opciones de nota"
 					>
-						<More size={17} color="currentColor" weight="Outline" strokeWidth={1.7} aria-hidden="true" />
+						<More
+							size={17}
+							color="currentColor"
+							weight="Outline"
+							strokeWidth={1.7}
+							aria-hidden="true"
+						/>
 					</button>
 				</div>
 			</div>
@@ -233,9 +425,17 @@ export default function CapturePage() {
 				<header className="capture-note-heading">
 					<p className="capture-note-kicker">Captura rápida</p>
 					<h1>Captura una idea</h1>
-					<p>Escríbelo tal como aparece. Unraw te ayuda con el siguiente paso.</p>
+					<p>
+						Escríbelo tal como aparece. Unraw te ayuda con el siguiente paso.
+					</p>
 				</header>
-				<form className="capture-note-form" onSubmit={(event) => { event.preventDefault(); void process(); }}>
+				<form
+					className="capture-note-form"
+					onSubmit={(event) => {
+						event.preventDefault();
+						void process();
+					}}
+				>
 					<MarkdownEditor
 						value={rawNote}
 						onChangeAction={setRawNote}
@@ -255,7 +455,15 @@ export default function CapturePage() {
 						</LoadingButton>
 					</div>
 				</form>
-				<SkeletonSwap ready={!loading} lines={2} reserve={40} label="Contexto del sistema" skeleton={<p className="capture-loading">Cargando tus áreas y proyectos…</p>}>
+				<SkeletonSwap
+					ready={!loading}
+					lines={2}
+					reserve={40}
+					label="Contexto del sistema"
+					skeleton={
+						<p className="capture-loading">Cargando tus áreas y proyectos…</p>
+					}
+				>
 					<span className="sr-only">Contexto del sistema cargado.</span>
 				</SkeletonSwap>
 				{error && (
@@ -272,14 +480,30 @@ export default function CapturePage() {
 					<div className="capture-result-area">
 						<section className="capture-result-summary" aria-live="polite">
 							<div>
-								<Check3 size={16} color="currentColor" weight="Outline" strokeWidth={1.7} aria-hidden="true" />
-								<span className="capture-result-summary-label">Resumen listo</span>
+								<Check3
+									size={16}
+									color="currentColor"
+									weight="Outline"
+									strokeWidth={1.7}
+									aria-hidden="true"
+								/>
+								<span className="capture-result-summary-label">
+									Resumen listo
+								</span>
 								<strong>
-									{resultCount} {resultCount === 1 ? "elemento listo" : "elementos listos"}
+									{resultCount}{" "}
+									{resultCount === 1 ? "elemento listo" : "elementos listos"}
 								</strong>
 							</div>
 						</section>
-						<ShowMore moreLabel="Revisar detalles" lessLabel="Ocultar detalles" label="Detalles del resumen" lines={2} maxHeight={900} className="mt-3">
+						<ShowMore
+							moreLabel="Revisar detalles"
+							lessLabel="Ocultar detalles"
+							label="Detalles del resumen"
+							lines={2}
+							maxHeight={900}
+							className="mt-3"
+						>
 							<div className="capture-results-wrapper space-y-6">
 								<section className="capture-results-grid grid gap-4 md:grid-cols-3">
 									<CaptureGroup title="Tareas" icon={ListCheck}>
@@ -288,19 +512,19 @@ export default function CapturePage() {
 												className="capture-result-card rounded-box border p-4"
 												key={`${item.title}-${index}`}
 											>
-															<MarkdownRenderer content={item.title} compact />
+												<MarkdownRenderer content={item.title} compact />
 												<p className="mt-2 text-xs text-base-content/60">
 													{areaNames.get(item.area_id ?? "") ??
 														item.suggested_new_area ??
 														"Sin área todavía"}
-														{item.project_id && projectNames.get(item.project_id)
+													{item.project_id && projectNames.get(item.project_id)
 														? ` / ${projectNames.get(item.project_id)}`
 														: item.suggested_new_project
 															? ` / ${item.suggested_new_project}`
 															: ""}
-															</p>
-																{areaSelect("task", index, item.area_id)}
-																{reviewControls("task", index, item.title)}
+												</p>
+												{areaSelect("task", index, item.area_id)}
+												{reviewControls("task", index, item.title)}
 											</article>
 										))}
 									</CaptureGroup>
@@ -315,9 +539,9 @@ export default function CapturePage() {
 													{areaNames.get(item.area_id ?? "") ??
 														item.suggested_new_area ??
 														"Sin área todavía"}
-															</p>
-																{areaSelect("idea", index, item.area_id)}
-																{reviewControls("idea", index, item.content)}
+												</p>
+												{areaSelect("idea", index, item.area_id)}
+												{reviewControls("idea", index, item.content)}
 											</article>
 										))}
 									</CaptureGroup>
@@ -334,9 +558,9 @@ export default function CapturePage() {
 													{areaNames.get(item.area_id ?? "") ??
 														item.suggested_new_area ??
 														"Sin área todavía"}
-															</p>
-																{areaSelect("knowledge", index, item.area_id)}
-																{reviewControls("knowledge", index, item.title)}
+												</p>
+												{areaSelect("knowledge", index, item.area_id)}
+												{reviewControls("knowledge", index, item.title)}
 											</article>
 										))}
 									</CaptureGroup>
@@ -348,7 +572,7 @@ export default function CapturePage() {
 												Sugerencias para revisar
 											</h2>
 											<p className="mt-1 text-sm text-base-content/70">
-Nada se crea automáticamente. Confirma solo lo que
+												Nada se crea automáticamente. Confirma solo lo que
 												quieras incorporar a tu sistema.
 											</p>
 										</div>
@@ -439,12 +663,20 @@ function CaptureGroup({
 	return (
 		<section className="capture-group space-y-3 rounded-box p-4 shadow-sm">
 			<h2 className="text-xl font-semibold">
-				<Icon size={17} color="currentColor" weight="Outline" strokeWidth={1.7} aria-hidden="true" />
+				<Icon
+					size={17}
+					color="currentColor"
+					weight="Outline"
+					strokeWidth={1.7}
+					aria-hidden="true"
+				/>
 				<span>{title}</span>
 			</h2>
 			<div className="space-y-3">
 				{children || (
-					<p className="text-sm text-base-content/60">No encontramos elementos.</p>
+					<p className="text-sm text-base-content/60">
+						No encontramos elementos.
+					</p>
 				)}
 			</div>
 		</section>
