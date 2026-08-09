@@ -8,6 +8,14 @@
       "sessions": 9,
       "memories": 16,
       "prompts": 9
+    },
+    {
+      "id": "dfb07a35",
+      "created_by": "sebas",
+      "created_at": "2026-08-09T04:42:51Z",
+      "sessions": 5,
+      "memories": 17,
+      "prompts": 10
     }
   ]
 }

@@ -10,6 +10,10 @@ export type CaptureIdea = { content: string; area_id: string | null; suggested_n
 export type CaptureSecondBrain = { title: string; content: string; area_id: string | null; tags: string[]; suggested_new_area: string | null }
 export type CaptureSuggestion = { type: "new_area" | "new_project"; name: string; reason: string; area_id?: string | null }
 export type CaptureOutput = { tasks: CaptureTask[]; ideas: CaptureIdea[]; second_brain: CaptureSecondBrain[]; suggestions: CaptureSuggestion[] }
+export type CapturePreference = "tasks" | "ideas" | "knowledge"
+export type SaveCaptureInput = { idempotency_key: string; raw_note: string; confirmed_output: CaptureOutput; assignments: Record<string, string | null> }
+export type SaveCaptureResult = { batch_id: string; affected_area_ids: string[]; inbox_item_ids: string[]; existing: boolean }
+export type InboxItem = { id: string; batch_id: string; kind: "task" | "idea" | "knowledge"; title: string | null; content: string; raw_note: string; needs_home: boolean; created_at: string }
 
 export type Profile = {
   id: string

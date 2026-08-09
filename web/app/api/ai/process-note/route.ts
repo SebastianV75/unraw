@@ -50,6 +50,7 @@ export async function POST(request: Request) {
     const output = await processNote({ ...parsedInput.data, user_context: context, apiKey, baseURL, model })
     return NextResponse.json(output)
   } catch (error) {
+    if (profile.tier === "free" && (error instanceof ProcessNoteError ? error.status >= 500 : true)) await supabase.rpc("refund_free_capture")
     if (error instanceof ProcessNoteError) return errorResponse(error.message, error.status)
     return errorResponse("The note could not be processed.", 500)
   }

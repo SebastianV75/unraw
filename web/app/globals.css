@@ -199,3 +199,49 @@ h4,
 .prose-vf hr {
   @apply my-8 border-base-300;
 }
+
+/* Fase 2: superficies calmadas para el resumen y la preparación. */
+.overview-page,
+.onboarding-page {
+  --quiet-bg: #f7f7f5;
+  --quiet-surface: #fcfcfa;
+  --quiet-border: #e5e4de;
+  --quiet-muted: #777873;
+  background: var(--quiet-bg);
+  color: var(--text-primary);
+}
+.overview-page { padding: 24px 0 64px; }
+.overview-header,
+.overview-section-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; }
+.overview-header h1,
+.onboarding-card h1 { margin: 8px 0 0; font-size: clamp(36px, 5vw, 54px); font-weight: 500; letter-spacing: -0.06em; line-height: 1; }
+.overview-label,
+.onboarding-label,
+.overview-meta { color: var(--quiet-muted); font-family: var(--font-mono, ui-monospace, monospace); font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; }
+.overview-lead,
+.overview-section-heading p:not(.overview-label),
+.onboarding-lead { margin-top: 10px; color: var(--text-secondary); font-size: 15px; line-height: 1.55; }
+.overview-primary-action { display: inline-flex; min-height: 40px; align-items: center; gap: 8px; border-radius: 6px; background: var(--accent); color: var(--accent-fg); padding: 0 14px; font-size: 13px; font-weight: 500; }
+.overview-primary-action:hover { opacity: 0.84; }
+.overview-card,
+.overview-inbox,
+.overview-column { border: 1px solid var(--quiet-border); border-radius: 8px; background: var(--quiet-surface); box-shadow: var(--shadow-sm); }
+.overview-card { padding: 16px; }
+.overview-card:hover { border-color: var(--border-strong); }
+.overview-section-heading h2 { margin-top: 6px; font-size: 24px; font-weight: 500; letter-spacing: -0.04em; }
+.overview-select { min-height: 34px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--quiet-surface); color: var(--text-primary); padding: 0 9px; font-size: 12px; }
+.overview-empty { border: 1px dashed var(--quiet-border); border-radius: 8px; padding: 20px; color: var(--text-secondary); font-size: 13px; }
+.overview-column { padding: 16px; background: color-mix(in oklch, var(--quiet-surface) 70%, var(--quiet-bg)); }
+.overview-column h3 { font-size: 13px; font-weight: 500; }
+.overview-inbox { padding: 20px; }
+.overview-inbox-item { display: flex; min-height: 44px; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--quiet-border); color: var(--text-primary); font-size: 13px; }
+.overview-inbox-item:hover,
+.overview-text-link:hover { color: var(--text-secondary); }
+.overview-text-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 16px; color: var(--text-primary); font-size: 12px; }
+.overview-alert { border: 1px solid color-mix(in oklch, var(--danger) 30%, var(--quiet-border)); border-radius: 6px; background: var(--danger-bg); padding: 10px 12px; color: var(--danger); font-size: 13px; }
+.onboarding-page { min-height: 100dvh; padding: 64px 16px; }
+.onboarding-card { width: min(100%, 680px); margin: 0 auto; border: 1px solid var(--quiet-border); border-radius: 10px; background: var(--quiet-surface); padding: clamp(24px, 5vw, 48px); box-shadow: var(--shadow-sm); }
+.onboarding-form { display: grid; gap: 16px; margin-top: 32px; }
+.onboarding-area { border: 1px solid var(--quiet-border); border-radius: 8px; background: var(--quiet-bg); padding: 16px; }
+.onboarding-area .btn { color: var(--text-secondary); }
+@media (max-width: 767px) { .overview-page { padding-top: 8px; } .overview-header, .overview-section-heading { align-items: flex-start; flex-direction: column; } .overview-primary-action { width: 100%; justify-content: center; } .onboarding-page { padding: 24px 12px; } }

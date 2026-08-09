@@ -2,9 +2,11 @@
 
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
-import { FormEvent, Suspense, useState } from "react"
+import { Suspense, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { getSafeNextPath } from "@/lib/utils"
+import { InlineValidation } from "@/components/interior/inline-validation"
+import { LoadingButton } from "@/components/interior/loading-button"
 
 function RegisterForm() {
   const searchParams = useSearchParams()
@@ -14,8 +16,11 @@ function RegisterForm() {
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+  async function handleSubmit() {
+    if (!/\S+@\S+\.\S+/.test(email) || password.length < 6) {
+      setError("Enter a valid email and a password with at least 6 characters.")
+      return
+    }
     setLoading(true)
     setError("")
     setMessage("")
@@ -45,25 +50,17 @@ function RegisterForm() {
     <main className="flex min-h-screen items-center justify-center bg-base-200 px-4 py-12">
       <section className="w-full max-w-md rounded-box bg-base-100 p-8 shadow-xl">
         <p className="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-primary">Unraw</p>
-         <h1 className="mb-2 text-3xl font-bold">Crea tu cuenta</h1>
-         <p className="mb-8 text-base-content/70">Empieza a ordenar todo lo que tienes en mente.</p>
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <label className="form-control w-full">
-             <span className="label-text mb-2">Correo electrónico</span>
-            <input className="input input-bordered w-full" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} />
-          </label>
-          <label className="form-control w-full">
-             <span className="label-text mb-2">Contraseña</span>
-            <input className="input input-bordered w-full" type="password" minLength={6} autoComplete="new-password" required value={password} onChange={(event) => setPassword(event.target.value)} />
-          </label>
-          {error && <p className="text-sm text-error" role="alert">{error}</p>}
-          {message && <p className="text-sm text-success" role="status">{message}</p>}
-          <button className="btn btn-primary w-full" type="submit" disabled={loading}>
-             {loading ? "Creando cuenta..." : "Crear cuenta"}
-          </button>
-        </form>
-        <p className="mt-6 text-center text-sm text-base-content/70">
-           ¿Ya tienes cuenta? <Link className="link link-primary" href={`/login?next=${encodeURIComponent(getSafeNextPath(searchParams.get("next")))}`}>Iniciar sesión</Link>
+          <h1 className="mb-2 text-3xl font-bold">Create your account</h1>
+          <p className="mb-8 text-base-content/70">Start organizing everything on your mind.</p>
+         <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); void handleSubmit() }}>
+           <InlineValidation label="Email" type="email" autoComplete="email" required value={email} onChange={setEmail} validate={(value) => /\S+@\S+\.\S+/.test(value) ? null : "Enter a valid email address."} />
+           <InlineValidation label="Password" type="password" autoComplete="new-password" required value={password} onChange={setPassword} minLength={6} validate={(value) => value.length >= 6 ? null : "Use at least 6 characters."} />
+           {error && <p className="text-sm text-error" role="alert">{error}</p>}
+           {message && <p className="text-sm text-success" role="status">{message}</p>}
+           <LoadingButton className="btn btn-primary w-full" onAction={handleSubmit} pendingLabel="Creating account..." disabled={loading}>Create account</LoadingButton>
+         </form>
+         <p className="mt-6 text-center text-sm text-base-content/70">
+            Already have an account? <Link className="link link-primary" href={`/login?next=${encodeURIComponent(getSafeNextPath(searchParams.get("next")))}`}>Sign in</Link>
         </p>
       </section>
     </main>

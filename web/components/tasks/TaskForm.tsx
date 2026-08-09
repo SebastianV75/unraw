@@ -1,7 +1,8 @@
 "use client"
 
-import { FormEvent, useState } from "react"
+import { useState } from "react"
 import { createClient } from "@/lib/supabase/client"
+import { LoadingButton } from "@/components/interior/loading-button"
 import type { Task } from "@/types"
 
 type TaskFormProps = {
@@ -17,8 +18,7 @@ export default function TaskForm({ areaId, projectId, onCreated }: TaskFormProps
   const [error, setError] = useState("")
   const [saving, setSaving] = useState(false)
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+  async function handleSubmit() {
     const cleanTitle = title.trim()
     if (!cleanTitle) {
       setError("A task title is required.")
@@ -58,14 +58,14 @@ export default function TaskForm({ areaId, projectId, onCreated }: TaskFormProps
   }
 
   return (
-    <form className="space-y-3" onSubmit={handleSubmit}>
+    <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); void handleSubmit() }}>
       <input className="input input-bordered w-full" placeholder="Task title" value={title} onChange={(event) => setTitle(event.target.value)} maxLength={200} />
       <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
         <input className="input input-bordered w-full" placeholder="Notes (optional)" value={notes} onChange={(event) => setNotes(event.target.value)} maxLength={2000} />
         <input className="input input-bordered" type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} aria-label="Due date" />
       </div>
       {error && <p className="text-sm text-error" role="alert">{error}</p>}
-      <button className="btn btn-primary" type="submit" disabled={saving}>{saving ? "Creating..." : "Add task"}</button>
+      <LoadingButton className="btn btn-primary" onAction={handleSubmit} pendingLabel="Creating..." disabled={saving}>Add task</LoadingButton>
     </form>
   )
 }

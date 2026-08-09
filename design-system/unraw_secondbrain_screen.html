@@ -1,0 +1,119 @@
+
+<style>
+  .app{display:flex;background:var(--surface-1);border:0.5px solid var(--border);border-radius:12px;overflow:hidden;font-size:13px;min-height:560px}
+  .sidebar{width:200px;min-width:200px;background:var(--surface-2);border-right:0.5px solid var(--border);padding:20px 0;display:flex;flex-direction:column;gap:2px}
+  .logo{padding:0 16px 20px;font-size:15px;font-weight:500;color:var(--text-primary);letter-spacing:-0.02em}
+  .nav-item{display:flex;align-items:center;gap:8px;padding:6px 16px;color:var(--text-secondary);cursor:pointer;font-size:13px}
+  .nav-item.active{background:var(--surface-1);color:var(--text-primary);font-weight:500}
+  .nav-item i{font-size:15px}
+  .nav-label{font-size:10px;font-weight:500;letter-spacing:0.06em;color:var(--text-muted);padding:12px 16px 4px;text-transform:uppercase}
+  .area-item{display:flex;align-items:center;gap:8px;padding:5px 16px;color:var(--text-secondary);cursor:pointer;font-size:12px}
+  .area-dot{width:6px;height:6px;border-radius:50%;background:var(--border-strong);flex-shrink:0}
+  .main{flex:1;padding:36px 40px;background:var(--surface-0);overflow:auto}
+  .header-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+  .page-title{font-size:22px;font-weight:500;color:var(--text-primary);letter-spacing:-0.02em}
+  .page-sub{font-size:12px;color:var(--text-muted);margin-bottom:28px;font-family:var(--font-mono)}
+  .filter-row{display:flex;align-items:center;gap:8px;margin-bottom:24px;flex-wrap:wrap}
+  .filter-chip{padding:5px 12px;border-radius:5px;border:0.5px solid var(--border);font-size:12px;color:var(--text-secondary);cursor:pointer;background:var(--surface-2)}
+  .filter-chip.active{background:var(--text-primary);color:var(--surface-2);border-color:var(--text-primary)}
+  .entries{display:flex;flex-direction:column;gap:8px}
+  .entry{background:var(--surface-2);border:0.5px solid var(--border);border-radius:8px;padding:16px 18px;cursor:pointer}
+  .entry:hover{border-color:var(--border-strong)}
+  .entry-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:6px}
+  .entry-title{font-size:14px;font-weight:500;color:var(--text-primary);line-height:1.4}
+  .entry-body{font-size:12px;color:var(--text-secondary);line-height:1.6;margin-bottom:10px}
+  .entry-footer{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .tag{font-size:10px;font-family:var(--font-mono);padding:2px 8px;border-radius:4px;background:var(--surface-1);border:0.5px solid var(--border);color:var(--text-muted)}
+  .area-tag{font-size:10px;font-family:var(--font-mono);padding:2px 8px;border-radius:4px;background:var(--surface-0);border:0.5px solid var(--border);color:var(--text-muted)}
+  .entry-date{font-size:11px;color:var(--text-muted);font-family:var(--font-mono);white-space:nowrap}
+  .section-label{font-size:10px;font-weight:500;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px;font-family:var(--font-mono)}
+  .search-box{display:flex;align-items:center;gap:8px;background:var(--surface-2);border:0.5px solid var(--border);border-radius:7px;padding:8px 12px;margin-bottom:20px;color:var(--text-muted);font-size:13px}
+</style>
+<div class="app">
+  <div class="sidebar">
+    <div class="logo">unraw</div>
+    <div class="nav-item"><i class="ti ti-layout-dashboard" aria-hidden="true"></i> Overview</div>
+    <div class="nav-item"><i class="ti ti-bolt" aria-hidden="true"></i> Captura</div>
+    <div class="nav-label">Áreas</div>
+    <div class="area-item"><div class="area-dot"></div> Trabajo</div>
+    <div class="area-item"><div class="area-dot"></div> Personal</div>
+    <div class="area-item"><div class="area-dot"></div> Finanzas</div>
+    <div style="flex:1"></div>
+    <div class="nav-item active"><i class="ti ti-brain" aria-hidden="true"></i> Second brain</div>
+    <div class="nav-item"><i class="ti ti-settings" aria-hidden="true"></i> Ajustes</div>
+  </div>
+  <div class="main">
+    <div class="header-row">
+      <div class="page-title">Second brain</div>
+      <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono)">12 entradas</span>
+    </div>
+    <div class="page-sub">conceptos · aprendizajes · referencias</div>
+
+    <div class="search-box">
+      <i class="ti ti-search" style="font-size:15px" aria-hidden="true"></i>
+      <span>Buscar en tu conocimiento...</span>
+    </div>
+
+    <div class="filter-row">
+      <div class="filter-chip active">Todo</div>
+      <div class="filter-chip">Trabajo</div>
+      <div class="filter-chip">Personal</div>
+      <div class="filter-chip">Finanzas</div>
+      <div class="filter-chip">#productividad</div>
+      <div class="filter-chip">#libros</div>
+    </div>
+
+    <div class="section-label">Recientes</div>
+    <div class="entries">
+      <div class="entry">
+        <div class="entry-header">
+          <div class="entry-title">Deep Work · Cal Newport</div>
+          <div class="entry-date">hoy</div>
+        </div>
+        <div class="entry-body">Enfocarse sin distracciones produce trabajo de alto valor. El trabajo profundo es una habilidad escasa y valiosa. Bloquear tiempo para concentración sin interrupciones.</div>
+        <div class="entry-footer">
+          <span class="area-tag">Personal</span>
+          <span class="tag">#libros</span>
+          <span class="tag">#productividad</span>
+        </div>
+      </div>
+
+      <div class="entry">
+        <div class="entry-header">
+          <div class="entry-title">Regla del 80/20 aplicada a clientes</div>
+          <div class="entry-date">ago 5</div>
+        </div>
+        <div class="entry-body">El 20% de los clientes genera el 80% de los ingresos. Identificar ese segmento y enfocar energía ahí primero antes de buscar nuevos clientes.</div>
+        <div class="entry-footer">
+          <span class="area-tag">Trabajo</span>
+          <span class="tag">#estrategia</span>
+          <span class="tag">#negocios</span>
+        </div>
+      </div>
+
+      <div class="entry">
+        <div class="entry-header">
+          <div class="entry-title">Interés compuesto en inversiones</div>
+          <div class="entry-date">ago 2</div>
+        </div>
+        <div class="entry-body">Empezar a invertir temprano importa más que el monto. A largo plazo el tiempo en el mercado supera al timing del mercado. Revisar portafolio cada trimestre.</div>
+        <div class="entry-footer">
+          <span class="area-tag">Finanzas</span>
+          <span class="tag">#inversión</span>
+        </div>
+      </div>
+
+      <div class="entry">
+        <div class="entry-header">
+          <div class="entry-title">Systems thinking · cómo funciona un sistema</div>
+          <div class="entry-date">jul 28</div>
+        </div>
+        <div class="entry-body">Los sistemas tienen elementos, interconexiones y una función. Cambiar la función cambia todo el comportamiento aunque los elementos sean los mismos.</div>
+        <div class="entry-footer">
+          <span class="area-tag">Personal</span>
+          <span class="tag">#modelos mentales</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

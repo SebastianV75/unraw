@@ -1,0 +1,74 @@
+
+<style>
+  .app{display:flex;background:var(--surface-1);border:0.5px solid var(--border);border-radius:12px;overflow:hidden;font-size:13px;min-height:580px}
+  .sidebar{width:200px;min-width:200px;background:var(--surface-2);border-right:0.5px solid var(--border);padding:20px 0;display:flex;flex-direction:column;gap:2px}
+  .logo{padding:0 16px 20px;font-size:15px;font-weight:500;color:var(--text-primary);letter-spacing:-0.02em}
+  .nav-item{display:flex;align-items:center;gap:8px;padding:6px 16px;color:var(--text-secondary);cursor:pointer}
+  .nav-item.active{background:var(--surface-1);color:var(--text-primary);font-weight:500}
+  .nav-item i{font-size:15px}
+  .nav-label{font-size:10px;font-weight:500;letter-spacing:0.06em;color:var(--text-muted);padding:12px 16px 4px;text-transform:uppercase}
+  .area-item{display:flex;align-items:center;gap:8px;padding:5px 16px;color:var(--text-secondary);cursor:pointer;font-size:12px}
+  .area-dot{width:6px;height:6px;border-radius:50%;background:var(--border-strong);flex-shrink:0}
+  .main{flex:1;padding:36px 40px;background:var(--surface-0);display:flex;flex-direction:column;gap:0}
+  .page-title{font-size:22px;font-weight:500;color:var(--text-primary);letter-spacing:-0.02em;margin-bottom:4px}
+  .page-sub{font-size:13px;color:var(--text-muted);margin-bottom:24px}
+  .capture-box{width:100%;min-height:180px;background:var(--surface-2);border:0.5px solid var(--border-strong);border-radius:10px;padding:18px 20px;font-size:14px;color:var(--text-primary);line-height:1.7;resize:none;font-family:inherit;box-sizing:border-box;outline:none}
+  .capture-footer{display:flex;align-items:center;justify-content:space-between;margin-top:12px}
+  .organize-btn{display:flex;align-items:center;gap:7px;background:var(--text-primary);color:var(--surface-2);border:none;border-radius:6px;padding:9px 18px;font-size:13px;font-weight:500;cursor:pointer}
+  .counter{font-size:12px;color:var(--text-muted);font-family:var(--font-mono)}
+  .divider{height:0.5px;background:var(--border);margin:28px 0}
+  .section-label{font-size:10px;font-weight:500;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-muted);margin-bottom:14px;font-family:var(--font-mono)}
+  .output-group{margin-bottom:20px}
+  .output-type{font-size:11px;font-weight:500;color:var(--text-muted);letter-spacing:0.05em;text-transform:uppercase;margin-bottom:8px;font-family:var(--font-mono)}
+  .output-item{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--surface-2);border:0.5px solid var(--border);border-radius:7px;margin-bottom:6px}
+  .output-check{width:14px;height:14px;border-radius:3px;border:1px solid var(--border-strong);flex-shrink:0;margin-top:1px}
+  .output-text{flex:1;color:var(--text-primary);font-size:13px;line-height:1.5}
+  .output-tag{font-size:10px;color:var(--text-muted);font-family:var(--font-mono);background:var(--surface-1);border:0.5px solid var(--border);border-radius:4px;padding:2px 7px;white-space:nowrap}
+  .save-row{display:flex;gap:8px;margin-top:20px}
+  .btn-save{background:var(--text-primary);color:var(--surface-2);border:none;border-radius:6px;padding:8px 16px;font-size:13px;font-weight:500;cursor:pointer}
+  .btn-cancel{background:transparent;color:var(--text-secondary);border:0.5px solid var(--border-strong);border-radius:6px;padding:8px 14px;font-size:13px;cursor:pointer}
+  .suggestion-pill{display:inline-flex;align-items:center;gap:6px;background:var(--bg-warning);color:var(--text-warning);border:0.5px solid var(--border-warning);border-radius:6px;padding:6px 12px;font-size:12px;margin-bottom:14px}
+</style>
+<div class="app">
+  <div class="sidebar">
+    <div class="logo">unraw</div>
+    <div class="nav-item"><i class="ti ti-layout-dashboard" aria-hidden="true"></i> Overview</div>
+    <div class="nav-item active"><i class="ti ti-bolt" aria-hidden="true"></i> Captura</div>
+    <div class="nav-label">Áreas</div>
+    <div class="area-item"><div class="area-dot"></div> Trabajo</div>
+    <div class="area-item"><div class="area-dot"></div> Personal</div>
+    <div class="area-item"><div class="area-dot"></div> Finanzas</div>
+    <div style="flex:1"></div>
+    <div class="nav-item"><i class="ti ti-brain" aria-hidden="true"></i> Second brain</div>
+    <div class="nav-item"><i class="ti ti-settings" aria-hidden="true"></i> Ajustes</div>
+  </div>
+  <div class="main">
+    <div class="page-title">Captura</div>
+    <div class="page-sub">Escribe lo que tengas en mente. La IA hace el resto.</div>
+    <textarea class="capture-box" readonly>tengo que llamar al contador mañana, también revisar el contrato de ivan antes del jueves, vi un video de deep work de cal newport que estuvo bueno, la idea de hacer una newsletter mensual para clientes sigue dando vueltas en mi cabeza</textarea>
+    <div class="capture-footer">
+      <button class="organize-btn"><i class="ti ti-sparkles" style="font-size:14px" aria-hidden="true"></i> Organizar</button>
+      <span class="counter">28 / 30</span>
+    </div>
+    <div class="divider"></div>
+    <div class="section-label">Output organizado</div>
+    <div class="suggestion-pill"><i class="ti ti-alert-circle" style="font-size:13px" aria-hidden="true"></i> La IA sugiere crear "Newsletter" en Trabajo · ¿Confirmar?</div>
+    <div class="output-group">
+      <div class="output-type">Tareas</div>
+      <div class="output-item"><div class="output-check"></div><div class="output-text">Llamar al contador mañana</div><span class="output-tag">Finanzas</span></div>
+      <div class="output-item"><div class="output-check"></div><div class="output-text">Revisar contrato de Iván antes del jueves</div><span class="output-tag">Trabajo</span></div>
+    </div>
+    <div class="output-group">
+      <div class="output-type">Ideas</div>
+      <div class="output-item"><div class="output-check"></div><div class="output-text">Newsletter mensual para clientes</div><span class="output-tag">Trabajo · Newsletter?</span></div>
+    </div>
+    <div class="output-group">
+      <div class="output-type">Second brain</div>
+      <div class="output-item"><div class="output-check"></div><div class="output-text">Deep Work · Cal Newport — enfocarse sin distracciones produce trabajo de alto valor</div><span class="output-tag">Personal</span></div>
+    </div>
+    <div class="save-row">
+      <button class="btn-save">Guardar todo</button>
+      <button class="btn-cancel">Editar</button>
+    </div>
+  </div>
+</div>

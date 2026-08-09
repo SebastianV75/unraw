@@ -1,0 +1,83 @@
+
+<style>
+  .wrap{background:var(--surface-1);border:0.5px solid var(--border);border-radius:12px;overflow:hidden;font-size:13px;min-height:560px;display:flex;align-items:stretch}
+  .left{width:220px;min-width:220px;background:var(--surface-0);border-right:0.5px solid var(--border);padding:36px 28px;display:flex;flex-direction:column}
+  .brand{font-size:16px;font-weight:500;letter-spacing:-0.02em;color:var(--text-primary);margin-bottom:40px}
+  .steps{display:flex;flex-direction:column;gap:0}
+  .step{display:flex;align-items:flex-start;gap:12px;padding:10px 0;position:relative}
+  .step:not(:last-child)::after{content:'';position:absolute;left:11px;top:32px;width:1px;height:calc(100% - 12px);background:var(--border)}
+  .step-dot{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--border-strong);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-weight:500;color:var(--text-muted);background:var(--surface-2);font-family:var(--font-mono)}
+  .step-dot.active{border-color:var(--text-primary);color:var(--text-primary);background:var(--surface-2)}
+  .step-dot.done{background:var(--text-primary);border-color:var(--text-primary);color:var(--surface-2)}
+  .step-label{font-size:12px;color:var(--text-muted);padding-top:3px}
+  .step-label.active{color:var(--text-primary);font-weight:500}
+  .step-label.done{color:var(--text-muted)}
+  .right{flex:1;padding:48px 44px;display:flex;flex-direction:column}
+  .q-label{font-size:10px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px;font-family:var(--font-mono)}
+  .q-title{font-size:20px;font-weight:500;color:var(--text-primary);letter-spacing:-0.02em;margin-bottom:6px;line-height:1.3}
+  .q-sub{font-size:13px;color:var(--text-muted);margin-bottom:28px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+  .chip{padding:7px 14px;border-radius:6px;border:0.5px solid var(--border-strong);font-size:13px;color:var(--text-secondary);cursor:pointer;background:var(--surface-2)}
+  .chip.selected{background:var(--text-primary);color:var(--surface-2);border-color:var(--text-primary)}
+  .chip-add{padding:7px 14px;border-radius:6px;border:0.5px dashed var(--border-strong);font-size:13px;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;gap:6px}
+  .divider{height:0.5px;background:var(--border);margin:28px 0}
+  .footer{display:flex;align-items:center;justify-content:space-between;margin-top:auto;padding-top:24px}
+  .btn-primary{background:var(--text-primary);color:var(--surface-2);border:none;border-radius:6px;padding:9px 20px;font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:7px}
+  .btn-skip{background:transparent;color:var(--text-muted);border:none;font-size:12px;cursor:pointer}
+  .progress-dots{display:flex;gap:6px}
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--border-strong)}
+  .dot.active{background:var(--text-primary);width:18px;border-radius:3px}
+</style>
+<div class="wrap">
+  <div class="left">
+    <div class="brand">unraw</div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-dot done"><i class="ti ti-check" style="font-size:11px" aria-hidden="true"></i></div>
+        <div class="step-label done">Tu nombre</div>
+      </div>
+      <div class="step">
+        <div class="step-dot active">2</div>
+        <div class="step-label active">Tus áreas</div>
+      </div>
+      <div class="step">
+        <div class="step-dot">3</div>
+        <div class="step-label">Qué capturas</div>
+      </div>
+      <div class="step">
+        <div class="step-dot">4</div>
+        <div class="step-label">Listo</div>
+      </div>
+    </div>
+    <div style="flex:1"></div>
+    <div style="font-size:11px;color:var(--text-muted);line-height:1.6">Esto tarda menos de 2 minutos. Puedes editarlo después.</div>
+  </div>
+  <div class="right">
+    <div class="q-label">Paso 2 de 3</div>
+    <div class="q-title">¿Cuáles son las áreas principales de tu vida?</div>
+    <div class="q-sub">Serán los contenedores de todo tu sistema. Elige las que apliquen o agrega las tuyas.</div>
+    <div class="chips">
+      <div class="chip selected">Trabajo</div>
+      <div class="chip selected">Personal</div>
+      <div class="chip selected">Finanzas</div>
+      <div class="chip">Salud</div>
+      <div class="chip">Estudios</div>
+      <div class="chip">Proyectos</div>
+      <div class="chip">Familia</div>
+      <div class="chip-add"><i class="ti ti-plus" style="font-size:13px" aria-hidden="true"></i> Agregar área</div>
+    </div>
+    <div style="font-size:12px;color:var(--text-muted);margin-top:4px">3 áreas seleccionadas</div>
+    <div class="footer">
+      <div class="progress-dots">
+        <div class="dot"></div>
+        <div class="dot active"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:16px">
+        <button class="btn-skip">Saltar</button>
+        <button class="btn-primary">Continuar <i class="ti ti-arrow-right" style="font-size:13px" aria-hidden="true"></i></button>
+      </div>
+    </div>
+  </div>
+</div>

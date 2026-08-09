@@ -61,6 +61,9 @@ firmware/**/dependencies.lock
 # Artefactos de automatización de navegador (screenshots de revisión)
 .playwright-mcp/
 
+# Gentle AI / SDD registry cache
+.atl/
+
 # Config local de editores / asistentes de IA
 .claude/
 .cursor/

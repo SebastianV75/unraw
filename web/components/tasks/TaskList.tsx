@@ -1,7 +1,8 @@
 "use client"
 
-import { FormEvent, useState } from "react"
+import { useState } from "react"
 import { createClient } from "@/lib/supabase/client"
+import { LoadingButton } from "@/components/interior/loading-button"
 import type { Task, TaskStatus } from "@/types"
 
 const statusLabels: Record<TaskStatus, string> = { pending: "Pending", in_progress: "In progress", done: "Done" }
@@ -37,8 +38,7 @@ export default function TaskList({ tasks, onStatusChanged, onDeleted }: TaskList
     setError("")
   }
 
-  async function updateTask(event: FormEvent<HTMLFormElement>, task: Task) {
-    event.preventDefault()
+  async function updateTask(task: Task) {
     const cleanTitle = title.trim()
     if (!cleanTitle) { setError("A task title is required."); return }
     setBusyId(task.id)
@@ -66,10 +66,10 @@ export default function TaskList({ tasks, onStatusChanged, onDeleted }: TaskList
       {error && <p className="text-sm text-error" role="alert">{error}</p>}
       {tasks.map((task) => (
         <article className="rounded-box border border-base-300 bg-base-100 p-4" key={task.id}>
-          {editingId === task.id ? <form className="space-y-3" onSubmit={(event) => void updateTask(event, task)}>
+          {editingId === task.id ? <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); void updateTask(task) }}>
             <input className="input input-bordered w-full" value={title} onChange={(event) => setTitle(event.target.value)} maxLength={200} aria-label="Task title" />
             <div className="grid gap-3 sm:grid-cols-[1fr_auto]"><input className="input input-bordered w-full" placeholder="Notes (optional)" value={notes} onChange={(event) => setNotes(event.target.value)} maxLength={2000} /><input className="input input-bordered" type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} aria-label="Due date" /></div>
-            <div className="flex gap-2"><button className="btn btn-primary btn-sm" type="submit" disabled={busyId === task.id}>{busyId === task.id ? "Saving..." : "Save"}</button><button className="btn btn-ghost btn-sm" type="button" onClick={() => setEditingId(null)} disabled={busyId === task.id}>Cancel</button></div>
+            <div className="flex gap-2"><LoadingButton className="btn btn-primary btn-sm" onAction={() => updateTask(task)} pendingLabel="Saving..." disabled={busyId === task.id}>Save</LoadingButton><button className="btn btn-ghost btn-sm" type="button" onClick={() => setEditingId(null)} disabled={busyId === task.id}>Cancel</button></div>
           </form> : <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h3 className={task.status === "done" ? "font-medium line-through opacity-60" : "font-medium"}>{task.title}</h3>

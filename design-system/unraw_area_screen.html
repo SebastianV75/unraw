@@ -1,0 +1,100 @@
+
+<style>
+  .app{display:flex;background:var(--surface-1);border:0.5px solid var(--border);border-radius:12px;overflow:hidden;font-size:13px;min-height:580px}
+  .sidebar{width:200px;min-width:200px;background:var(--surface-2);border-right:0.5px solid var(--border);padding:20px 0;display:flex;flex-direction:column;gap:2px}
+  .logo{padding:0 16px 20px;font-size:15px;font-weight:500;color:var(--text-primary);letter-spacing:-0.02em}
+  .nav-item{display:flex;align-items:center;gap:8px;padding:6px 16px;color:var(--text-secondary);cursor:pointer;font-size:13px}
+  .nav-item i{font-size:15px}
+  .nav-label{font-size:10px;font-weight:500;letter-spacing:0.06em;color:var(--text-muted);padding:12px 16px 4px;text-transform:uppercase}
+  .area-item{display:flex;align-items:center;gap:8px;padding:5px 16px;color:var(--text-secondary);cursor:pointer;font-size:12px}
+  .area-item.active{color:var(--text-primary);font-weight:500}
+  .area-dot{width:6px;height:6px;border-radius:50%;background:var(--border-strong);flex-shrink:0}
+  .main{flex:1;padding:36px 40px;background:var(--surface-0);overflow:auto}
+  .header-row{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px}
+  .page-title{font-size:26px;font-weight:500;color:var(--text-primary);letter-spacing:-0.025em}
+  .page-sub{font-size:12px;color:var(--text-muted);margin-bottom:32px;font-family:var(--font-mono)}
+  .section-label{font-size:10px;font-weight:500;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px;font-family:var(--font-mono)}
+  .projects-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:28px}
+  .proj-card{background:var(--surface-2);border:0.5px solid var(--border);border-radius:8px;padding:14px 16px;cursor:pointer}
+  .proj-card:hover{border-color:var(--border-strong)}
+  .proj-name{font-weight:500;color:var(--text-primary);margin-bottom:3px;font-size:13px}
+  .proj-meta{font-size:11px;color:var(--text-muted);font-family:var(--font-mono);margin-bottom:10px}
+  .progress-bar{height:2px;background:var(--border);border-radius:2px;overflow:hidden}
+  .progress-fill{height:100%;background:var(--text-primary);border-radius:2px}
+  .task-row{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:6px;border:0.5px solid transparent;margin-bottom:3px;cursor:pointer}
+  .task-row:hover{background:var(--surface-2);border-color:var(--border)}
+  .checkbox{width:14px;height:14px;border-radius:3px;border:1px solid var(--border-strong);flex-shrink:0}
+  .checkbox.done{background:var(--text-primary);border-color:var(--text-primary);display:flex;align-items:center;justify-content:center}
+  .task-text{color:var(--text-primary);flex:1;font-size:13px}
+  .task-text.done{text-decoration:line-through;color:var(--text-muted)}
+  .task-proj{font-size:11px;color:var(--text-muted);font-family:var(--font-mono)}
+  .idea-row{display:flex;align-items:flex-start;gap:10px;padding:9px 12px;border-radius:6px;margin-bottom:3px;cursor:pointer}
+  .idea-row:hover{background:var(--surface-2)}
+  .idea-dot{width:4px;height:4px;border-radius:50%;background:var(--text-muted);flex-shrink:0;margin-top:5px}
+  .idea-text{color:var(--text-secondary);font-size:13px;line-height:1.5}
+  .divider{height:0.5px;background:var(--border);margin:20px 0}
+  .add-btn{color:var(--text-muted);font-size:12px;cursor:pointer;padding:4px 0;display:flex;align-items:center;gap:4px}
+  .add-btn:hover{color:var(--text-primary)}
+  .status-pill{font-size:10px;font-family:var(--font-mono);padding:2px 7px;border-radius:4px;background:var(--surface-1);border:0.5px solid var(--border);color:var(--text-muted)}
+</style>
+<div class="app">
+  <div class="sidebar">
+    <div class="logo">unraw</div>
+    <div class="nav-item"><i class="ti ti-layout-dashboard" aria-hidden="true"></i> Overview</div>
+    <div class="nav-item"><i class="ti ti-bolt" aria-hidden="true"></i> Captura</div>
+    <div class="nav-label">Áreas</div>
+    <div class="area-item active"><div class="area-dot"></div> Trabajo</div>
+    <div class="area-item"><div class="area-dot"></div> Personal</div>
+    <div class="area-item"><div class="area-dot"></div> Finanzas</div>
+    <div style="flex:1"></div>
+    <div class="nav-item"><i class="ti ti-brain" aria-hidden="true"></i> Second brain</div>
+    <div class="nav-item"><i class="ti ti-settings" aria-hidden="true"></i> Ajustes</div>
+  </div>
+  <div class="main">
+    <div class="header-row">
+      <div class="page-title">Trabajo</div>
+      <span class="status-pill">3 proyectos · 7 tareas</span>
+    </div>
+    <div class="page-sub">área · actualizado hace 2h</div>
+
+    <div class="section-label">Proyectos</div>
+    <div class="projects-row">
+      <div class="proj-card">
+        <div class="proj-name">Rediseño web</div>
+        <div class="proj-meta">3 / 8 tareas completadas</div>
+        <div class="progress-bar"><div class="progress-fill" style="width:37%"></div></div>
+      </div>
+      <div class="proj-card">
+        <div class="proj-name">App mobile</div>
+        <div class="proj-meta">1 / 5 tareas completadas</div>
+        <div class="progress-bar"><div class="progress-fill" style="width:20%"></div></div>
+      </div>
+    </div>
+    <div class="add-btn"><i class="ti ti-plus" style="font-size:12px" aria-hidden="true"></i> Nuevo proyecto</div>
+
+    <div class="divider"></div>
+    <div class="section-label">Tareas sueltas</div>
+    <div class="task-row">
+      <div class="checkbox"></div>
+      <span class="task-text">Revisar propuesta de diseño v2</span>
+      <span class="task-proj">Rediseño web</span>
+    </div>
+    <div class="task-row">
+      <div class="checkbox"></div>
+      <span class="task-text">Enviar contrato al cliente</span>
+      <span class="task-proj">Rediseño web</span>
+    </div>
+    <div class="task-row">
+      <div class="checkbox done"><i class="ti ti-check" style="font-size:9px;color:#fff" aria-hidden="true"></i></div>
+      <span class="task-text done">Llamada de kick-off con Ivan</span>
+      <span class="task-proj">App mobile</span>
+    </div>
+    <div class="add-btn" style="margin-top:6px"><i class="ti ti-plus" style="font-size:12px" aria-hidden="true"></i> Nueva tarea</div>
+
+    <div class="divider"></div>
+    <div class="section-label">Ideas</div>
+    <div class="idea-row"><div class="idea-dot"></div><div class="idea-text">Newsletter mensual para clientes con updates del proyecto</div></div>
+    <div class="idea-row"><div class="idea-dot"></div><div class="idea-text">Automatizar reportes de progreso semanales</div></div>
+    <div class="add-btn" style="margin-top:4px"><i class="ti ti-plus" style="font-size:12px" aria-hidden="true"></i> Nueva idea</div>
+  </div>
+</div>

@@ -1,0 +1,81 @@
+
+<style>
+  .app{display:flex;background:var(--surface-1);border:0.5px solid var(--border);border-radius:12px;overflow:hidden;font-size:13px;min-height:520px}
+  .sidebar{width:200px;min-width:200px;background:var(--surface-2);border-right:0.5px solid var(--border);padding:20px 0;display:flex;flex-direction:column;gap:2px}
+  .logo{padding:0 16px 20px;font-size:15px;font-weight:500;color:var(--text-primary);letter-spacing:-0.02em}
+  .nav-item{display:flex;align-items:center;gap:8px;padding:6px 16px;border-radius:0;color:var(--text-secondary);cursor:pointer;transition:background 100ms}
+  .nav-item:hover{background:var(--surface-1);color:var(--text-primary)}
+  .nav-item.active{background:var(--surface-1);color:var(--text-primary);font-weight:500}
+  .nav-item i{font-size:15px}
+  .nav-label{font-size:10px;font-weight:500;letter-spacing:0.06em;color:var(--text-muted);padding:12px 16px 4px;text-transform:uppercase}
+  .area-item{display:flex;align-items:center;gap:8px;padding:5px 16px;color:var(--text-secondary);cursor:pointer;font-size:12px}
+  .area-item:hover{color:var(--text-primary)}
+  .area-dot{width:6px;height:6px;border-radius:50%;background:var(--border-strong);flex-shrink:0}
+  .main{flex:1;padding:36px 40px;overflow:auto;background:var(--surface-0)}
+  .page-title{font-size:22px;font-weight:500;color:var(--text-primary);letter-spacing:-0.02em;margin-bottom:4px}
+  .page-sub{font-size:13px;color:var(--text-muted);margin-bottom:32px}
+  .section-label{font-size:10px;font-weight:500;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px;font-family:var(--font-mono)}
+  .task-row{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:6px;border:0.5px solid transparent;margin-bottom:4px;cursor:pointer}
+  .task-row:hover{background:var(--surface-2);border-color:var(--border)}
+  .checkbox{width:15px;height:15px;border-radius:3px;border:1px solid var(--border-strong);flex-shrink:0}
+  .task-text{color:var(--text-primary);flex:1}
+  .task-area{font-size:11px;color:var(--text-muted);font-family:var(--font-mono)}
+  .projects-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:28px}
+  .proj-card{background:var(--surface-2);border:0.5px solid var(--border);border-radius:8px;padding:14px 16px;cursor:pointer}
+  .proj-card:hover{border-color:var(--border-strong)}
+  .proj-name{font-weight:500;color:var(--text-primary);margin-bottom:4px}
+  .proj-meta{font-size:11px;color:var(--text-muted);font-family:var(--font-mono);margin-bottom:10px}
+  .progress-bar{height:3px;background:var(--border);border-radius:2px;overflow:hidden}
+  .progress-fill{height:100%;background:var(--text-primary);border-radius:2px}
+  .capture-btn{display:flex;align-items:center;gap:8px;background:var(--text-primary);color:var(--surface-2);border:none;border-radius:6px;padding:8px 14px;font-size:13px;font-weight:500;cursor:pointer;margin-bottom:28px;width:fit-content}
+  .capture-btn i{font-size:14px}
+  .divider{height:0.5px;background:var(--border);margin:20px 0}
+</style>
+<div class="app">
+  <div class="sidebar">
+    <div class="logo">unraw</div>
+    <div class="nav-item active"><i class="ti ti-layout-dashboard" aria-hidden="true"></i> Overview</div>
+    <div class="nav-item"><i class="ti ti-bolt" aria-hidden="true"></i> Captura</div>
+    <div class="nav-label">Áreas</div>
+    <div class="area-item"><div class="area-dot"></div> Trabajo</div>
+    <div class="area-item"><div class="area-dot"></div> Personal</div>
+    <div class="area-item"><div class="area-dot"></div> Finanzas</div>
+    <div class="area-item" style="color:var(--text-muted);font-size:11px;padding-top:8px"><i class="ti ti-plus" style="font-size:12px" aria-hidden="true"></i> Nueva área</div>
+    <div style="flex:1"></div>
+    <div class="nav-item" style="margin-top:auto"><i class="ti ti-brain" aria-hidden="true"></i> Second brain</div>
+    <div class="nav-item"><i class="ti ti-settings" aria-hidden="true"></i> Ajustes</div>
+  </div>
+  <div class="main">
+    <div class="page-title">Buenos días, Sebas</div>
+    <div class="page-sub">Lunes 8 de agosto · 5 tareas pendientes</div>
+    <button class="capture-btn"><i class="ti ti-bolt" aria-hidden="true"></i> Capturar algo</button>
+    <div class="section-label">Pendiente hoy</div>
+    <div class="task-row"><div class="checkbox"></div><span class="task-text">Llamar al contador sobre la factura</span><span class="task-area">Finanzas</span></div>
+    <div class="task-row"><div class="checkbox"></div><span class="task-text">Revisar propuesta de diseño v2</span><span class="task-area">Trabajo</span></div>
+    <div class="task-row"><div class="checkbox"></div><span class="task-text">Enviar contrato al cliente</span><span class="task-area">Trabajo · Rediseño web</span></div>
+    <div class="task-row"><div class="checkbox"></div><span class="task-text">Renovar seguro del auto</span><span class="task-area">Personal</span></div>
+    <div class="divider"></div>
+    <div class="section-label">Proyectos activos</div>
+    <div class="projects-grid">
+      <div class="proj-card">
+        <div class="proj-name">Rediseño web</div>
+        <div class="proj-meta">3 / 8 tareas · Trabajo</div>
+        <div class="progress-bar"><div class="progress-fill" style="width:37%"></div></div>
+      </div>
+      <div class="proj-card">
+        <div class="proj-name">App mobile</div>
+        <div class="proj-meta">1 / 5 tareas · Trabajo</div>
+        <div class="progress-bar"><div class="progress-fill" style="width:20%"></div></div>
+      </div>
+      <div class="proj-card">
+        <div class="proj-name">Inversión departamento</div>
+        <div class="proj-meta">0 / 3 tareas · Finanzas</div>
+        <div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div>
+      </div>
+      <div class="proj-card" style="border-style:dashed;display:flex;align-items:center;gap:8px;color:var(--text-muted)">
+        <i class="ti ti-plus" style="font-size:14px" aria-hidden="true"></i>
+        <span>Nuevo proyecto</span>
+      </div>
+    </div>
+  </div>
+</div>
