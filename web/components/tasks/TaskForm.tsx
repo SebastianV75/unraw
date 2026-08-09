@@ -4,6 +4,7 @@ import { useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { LoadingButton } from "@/components/interior/loading-button"
 import type { Task } from "@/types"
+import posthog from "posthog-js"
 
 type TaskFormProps = {
   areaId: string
@@ -50,6 +51,11 @@ export default function TaskForm({ areaId, projectId, onCreated }: TaskFormProps
       return
     }
 
+    posthog.capture("task_created", {
+      has_due_date: Boolean(dueDate),
+      has_notes: Boolean(notes.trim()),
+      is_project_task: Boolean(projectId),
+    })
     onCreated(data as Task)
     setTitle("")
     setNotes("")

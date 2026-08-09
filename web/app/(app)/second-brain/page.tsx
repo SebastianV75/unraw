@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client"
 import { LoadingButton } from "@/components/interior/loading-button"
 import { SkeletonSwap } from "@/components/interior/skeleton-swap"
 import type { Area, SecondBrainEntry } from "@/types"
+import posthog from "posthog-js"
 
 export default function SecondBrainPage() {
   const [entries, setEntries] = useState<SecondBrainEntry[]>([])
@@ -48,7 +49,7 @@ export default function SecondBrainPage() {
     const cleanTags = tags.split(",").map((tag) => tag.trim()).filter(Boolean).slice(0, 20)
     const { data, error: insertError } = await supabase.from("second_brain").insert({ user_id: user.id, area_id: areaId, title: cleanTitle, content: cleanContent, tags: cleanTags }).select("*").single()
     if (insertError || !data) setError("We could not create the entry.")
-    else { setEntries((current) => [data as SecondBrainEntry, ...current]); setTitle(""); setContent(""); setTags("") }
+    else { posthog.capture("knowledge_entry_created", { tag_count: cleanTags.length }); setEntries((current) => [data as SecondBrainEntry, ...current]); setTitle(""); setContent(""); setTags("") }
     setSaving(false)
   }
 

@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client"
 import { getSafeNextPath } from "@/lib/utils"
 import { InlineValidation } from "@/components/interior/inline-validation"
 import { LoadingButton } from "@/components/interior/loading-button"
+import posthog from "posthog-js"
 
 function RegisterForm() {
   const searchParams = useSearchParams()
@@ -36,6 +37,8 @@ function RegisterForm() {
       setLoading(false)
       return
     }
+
+    posthog.capture("account_registered", { signup_method: "password" })
 
     if (data.session) {
       window.location.assign(getSafeNextPath(searchParams.get("next")))

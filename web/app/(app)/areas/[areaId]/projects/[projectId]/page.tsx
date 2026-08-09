@@ -9,6 +9,7 @@ import TaskList from "@/components/tasks/TaskList";
 import { LoadingButton } from "@/components/interior/loading-button";
 import { SkeletonSwap } from "@/components/interior/skeleton-swap";
 import type { Area, Project, ProjectStatus, Task } from "@/types";
+import posthog from "posthog-js";
 
 export default function ProjectPage({
 	params,
@@ -106,6 +107,7 @@ export default function ProjectPage({
 		if (updateError || !data)
 			setError("We could not update the project. Please try again.");
 		else {
+			posthog.capture("project_updated", { status: projectStatus });
 			setProject(data as Project);
 			setEditing(false);
 		}

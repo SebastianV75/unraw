@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client"
 import { getSafeNextPath } from "@/lib/utils"
 import { InlineValidation } from "@/components/interior/inline-validation"
 import { LoadingButton } from "@/components/interior/loading-button"
+import posthog from "posthog-js"
 
 function LoginForm() {
   const searchParams = useSearchParams()
@@ -30,6 +31,7 @@ function LoginForm() {
       return
     }
 
+    posthog.capture("user_signed_in", { sign_in_method: "password" })
     window.location.assign(getSafeNextPath(searchParams.get("next")))
   }
 

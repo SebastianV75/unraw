@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { InlineValidation } from "@/components/interior/inline-validation";
 import { LoadingButton } from "@/components/interior/loading-button";
+import posthog from "posthog-js";
 
 type AreaDraft = { name: string; projects: string[] };
 
@@ -174,6 +175,10 @@ export default function OnboardingPage() {
 			return;
 		}
 
+		posthog.capture("onboarding_completed", {
+			area_count: validAreas.length,
+			project_count: projects.length,
+		});
 		router.replace("/capture");
 	}
 

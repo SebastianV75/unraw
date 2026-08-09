@@ -11,6 +11,7 @@ import IdeaList from "@/components/ideas/IdeaList";
 import type { Area, Project, Task, ProjectStatus, Idea } from "@/types";
 import { LoadingButton } from "@/components/interior/loading-button";
 import { SkeletonSwap } from "@/components/interior/skeleton-swap";
+import posthog from "posthog-js";
 
 export default function AreaPage({
 	params,
@@ -140,6 +141,9 @@ export default function AreaPage({
 			.single();
 		if (insertError || !data) setError("We could not create the project.");
 		else {
+			posthog.capture("project_created", {
+				has_description: Boolean(projectDescription.trim()),
+			});
 			setProjects((current) => [...current, data as Project]);
 			setProjectName("");
 			setProjectDescription("");

@@ -4,6 +4,7 @@ import { useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { LoadingButton } from "@/components/interior/loading-button"
 import type { Idea } from "@/types"
+import posthog from "posthog-js"
 
 export default function IdeaForm({ areaId, onCreated }: { areaId: string; onCreated: (idea: Idea) => void }) {
   const [content, setContent] = useState("")
@@ -19,7 +20,7 @@ export default function IdeaForm({ areaId, onCreated }: { areaId: string; onCrea
     if (!user) { setError("Your session has expired. Please sign in again."); setSaving(false); return }
     const { data, error: insertError } = await supabase.from("ideas").insert({ user_id: user.id, area_id: areaId, content: cleanContent, status: "new" }).select("*").single()
     if (insertError || !data) setError("We could not create the idea.")
-    else { onCreated(data as Idea); setContent("") }
+    else { posthog.capture("idea_created"); onCreated(data as Idea); setContent("") }
     setSaving(false)
   }
 

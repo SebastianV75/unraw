@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client"
 import type { Area } from "@/types"
 import { LoadingButton } from "@/components/interior/loading-button"
 import { SkeletonSwap } from "@/components/interior/skeleton-swap"
+import posthog from "posthog-js"
 
 export default function AreasPage() {
   const [areas, setAreas] = useState<Area[]>([])
@@ -35,7 +36,7 @@ export default function AreasPage() {
     const { data: { user } } = await supabase.auth.getUser()
     const { data, error: insertError } = user ? await supabase.from("areas").insert({ user_id: user.id, name: cleanName }).select("*").single() : { data: null, error: new Error("No user") }
     if (insertError || !data) setError("We could not create the area. Please try again.")
-    else { setAreas((current) => [...current, data as Area]); setName("") }
+    else { posthog.capture("area_created"); setAreas((current) => [...current, data as Area]); setName("") }
     setSaving(false)
   }
 

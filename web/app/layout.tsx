@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { PostHogInit } from "@/components/PostHogInit";
 import config from "@/config";
 
 const geist = Geist({
@@ -55,6 +56,7 @@ export default function RootLayout({
 						__html: `try{var t=localStorage.getItem('theme');if(t==='unraw'||t==='unraw-dark'){document.documentElement.setAttribute('data-theme',t)}}catch(e){}`,
 					}}
 				/>
+				<PostHogInit />
 				{children}
 			</body>
 		</html>

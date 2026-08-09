@@ -4,6 +4,7 @@ import { useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { LoadingButton } from "@/components/interior/loading-button"
 import type { Idea, IdeaStatus } from "@/types"
+import posthog from "posthog-js"
 
 const statuses: Record<IdeaStatus, string> = { new: "New", evaluating: "Evaluating", discarded: "Discarded", converted: "Converted" }
 
@@ -17,7 +18,7 @@ export default function IdeaList({ ideas, onChanged, onDeleted }: { ideas: Idea[
     setBusyId(idea.id)
     const { data, error: updateError } = await createClient().from("ideas").update(changes).eq("id", idea.id).eq("user_id", idea.user_id).select("*").single()
     if (updateError || !data) setError("We could not update the idea.")
-    else { onChanged(data as Idea); setEditingId(null) }
+    else { if (changes.status) posthog.capture("idea_status_changed", { status: changes.status }); onChanged(data as Idea); setEditingId(null) }
     setBusyId(null)
   }
 

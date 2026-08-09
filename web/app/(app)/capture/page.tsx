@@ -17,6 +17,7 @@ import { ShowMore } from "@/components/interior/show-more";
 import { SkeletonSwap } from "@/components/interior/skeleton-swap";
 import { createClient } from "@/lib/supabase/client";
 import type { Area, CaptureOutput, CaptureSuggestion, Project } from "@/types";
+import posthog from "posthog-js";
 
 const suggestionKey = (suggestion: CaptureSuggestion) =>
 	`${suggestion.type}:${suggestion.name.toLowerCase()}`;
@@ -135,6 +136,11 @@ export default function CapturePage() {
 			};
 			if (!response.ok)
 				throw new Error(body.error || "No pudimos procesar la nota.");
+			posthog.capture("capture_processed", {
+				task_count: body.tasks.length,
+				idea_count: body.ideas.length,
+				knowledge_entry_count: body.second_brain.length,
+			});
 			setResult(body);
 				setApproved({});
 				setAssignedAreas({});
@@ -171,6 +177,12 @@ export default function CapturePage() {
 				const response = await fetch("/api/captures/save", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ idempotency_key: key, raw_note: rawNote, confirmed_output: { ...result, tasks: tasks.map(({ item }) => item), ideas: ideas.map(({ item }) => item), second_brain: secondBrain.map(({ item }) => item), suggestions: confirmedSuggestions }, assignments }) });
 			const body = await response.json() as { error?: string };
 			if (!response.ok) throw new Error(body.error || "No pudimos guardar la captura.");
+			posthog.capture("capture_saved", {
+				task_count: tasks.length,
+				idea_count: ideas.length,
+				knowledge_entry_count: secondBrain.length,
+				approved_suggestion_count: confirmedSuggestions.filter((item) => approved[suggestionKey(item)]).length,
+			});
 			setSuccess("Elementos confirmados guardados. Lo que no tenga destino está en Inbox."); setResult(null); setRawNote(""); setIdempotencyKey(""); sessionStorage.removeItem("unraw-capture-draft");
 		} catch (caught) { setError(caught instanceof Error ? caught.message : "No pudimos guardar la captura."); }
 		setSaving(false);

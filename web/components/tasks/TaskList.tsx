@@ -4,6 +4,7 @@ import { useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { LoadingButton } from "@/components/interior/loading-button"
 import type { Task, TaskStatus } from "@/types"
+import posthog from "posthog-js"
 
 const statusLabels: Record<TaskStatus, string> = { pending: "Pending", in_progress: "In progress", done: "Done" }
 
@@ -25,7 +26,7 @@ export default function TaskList({ tasks, onStatusChanged, onDeleted }: TaskList
     setBusyId(task.id)
     setError("")
     const { data, error } = await createClient().from("tasks").update({ status }).eq("id", task.id).eq("user_id", task.user_id).select("*").single()
-    if (!error && data) onStatusChanged(data as Task)
+    if (!error && data) { posthog.capture("task_status_changed", { status }); onStatusChanged(data as Task) }
     else setError("We could not update the task status. Please try again.")
     setBusyId(null)
   }
