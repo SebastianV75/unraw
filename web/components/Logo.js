@@ -1,5 +1,4 @@
-// Marca de VibeFast: una "V" con forma de símbolo de raíz cuadrada (√).
-// Cuadrado redondeado con el color primary y el trazo en blanco.
+// Un símbolo simple para la marca Unraw.
 export default function Logo({ className = "size-7" }) {
   return (
     <span

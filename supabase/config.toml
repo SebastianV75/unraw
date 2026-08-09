@@ -1,13 +1,13 @@
 # ============================================================
-# Supabase · config local (CLI)
+# Supabase · configuración local (CLI)
 # ------------------------------------------------------------
 # Solo lo necesitas si corres Supabase en local con `supabase start`.
-# Para el curso usamos Supabase Cloud, así que esto es opcional.
+# Para Unraw puedes usar Supabase Cloud, así que esto es opcional.
 # Las migrations de supabase/migrations/ se aplican igual con
 # `supabase db push` apuntando a tu proyecto cloud.
 # ============================================================
 
-project_id = "vibefast"
+project_id = "unraw"
 
 [db]
 port = 54322

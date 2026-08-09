@@ -2,13 +2,13 @@
 @plugin "daisyui";
 
 /* ============================================================
-   Tema de marca VibeFast (Flat Design)
+   Tema de marca Unraw (Flat Design)
    Paleta: azul cielo (primary/accent/CTA) + slate (neutral).
    El primary real lo inyecta config.brand.primary desde layout.js
    como --color-primary inline (config = fuente de verdad).
    ============================================================ */
 @plugin "daisyui/theme" {
-  name: "vibefast";
+   name: "unraw";
   default: true;
   prefersdark: false;
   color-scheme: light;
@@ -34,7 +34,7 @@
 }
 
 @plugin "daisyui/theme" {
-  name: "vibefast-dark";
+   name: "unraw-dark";
   default: false;
   prefersdark: true;
   color-scheme: dark;
@@ -184,7 +184,7 @@ h4,
 .prose-vf code[data-theme] span {
   color: var(--shiki-light);
 }
-[data-theme="vibefast-dark"] .prose-vf code[data-theme] span {
+[data-theme="unraw-dark"] .prose-vf code[data-theme] span {
   color: var(--shiki-dark);
 }
 .prose-vf table {

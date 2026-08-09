@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client"
 // Botón de "Continuar con Google". Dispara el flujo OAuth de Supabase.
 // Tras autenticar, Google redirige a /auth/callback, que intercambia
 // el código por una sesión y manda al usuario a `next`.
-export default function GoogleButton({ next = "/dashboard" }) {
+export default function GoogleButton({ next = "/overview" }) {
   const [loading, setLoading] = useState(false)
 
   async function signIn() {

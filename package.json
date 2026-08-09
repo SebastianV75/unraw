@@ -1,8 +1,8 @@
 {
-  "name": "vibefast",
+  "name": "unraw",
   "version": "0.1.0",
   "private": true,
-  "description": "Boilerplate para el Curso de Vibecoding Remotto — Next.js + Supabase + OpenAI + MCP, con docs estilo ShipFast",
+  "description": "Unraw: un sistema simple para organizar todo lo que tienes en mente.",
   "workspaces": [
     "web",
     "docs"
