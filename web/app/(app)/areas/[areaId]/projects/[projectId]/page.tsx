@@ -277,21 +277,23 @@ export default function ProjectPage({
 			</section>
 			<section className="space-y-4">
 				<h2 className="text-2xl font-semibold">Añadir una tarea</h2>
-				<div className="rounded-box border border-base-300 bg-base-100 p-4">
+				<div className="task-capture-shell">
 					<TaskForm
 						areaId={area.id}
 						projectId={project.id}
-						onCreated={(task) => setTasks((current) => [task, ...current])}
+						onCreatedAction={(task) =>
+							setTasks((current) => [task, ...current])
+						}
 					/>
 				</div>
 				<TaskList
 					tasks={tasks}
-					onStatusChanged={(task) =>
+					onStatusChangedAction={(task) =>
 						setTasks((current) =>
 							current.map((item) => (item.id === task.id ? task : item)),
 						)
 					}
-					onDeleted={(id) =>
+					onDeletedAction={(id) =>
 						setTasks((current) => current.filter((task) => task.id !== id))
 					}
 				/>

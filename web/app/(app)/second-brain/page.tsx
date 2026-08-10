@@ -199,7 +199,6 @@ export default function SecondBrainPage() {
 					onChangeAction={setContent}
 					maxLength={10000}
 					variant="document"
-					livePreview
 					autoFocus
 				/>
 				<input
@@ -277,7 +276,6 @@ export default function SecondBrainPage() {
 												}
 												maxLength={10000}
 												variant="document"
-												livePreview
 											/>
 											<input
 												className="input input-bordered w-full"

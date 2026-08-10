@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { LoadingButton } from "@/components/interior/loading-button";
+import { createClient } from "@/lib/supabase/client";
 import type { Idea, IdeaStatus } from "@/types";
 
 const statuses: Record<IdeaStatus, string> = {
@@ -12,15 +12,17 @@ const statuses: Record<IdeaStatus, string> = {
 	converted: "Convertida",
 };
 
+type IdeaListProps = {
+	ideas: Idea[];
+	onChangedAction: (idea: Idea) => void;
+	onDeletedAction: (id: string) => void;
+};
+
 export default function IdeaList({
 	ideas,
-	onChanged,
-	onDeleted,
-}: {
-	ideas: Idea[];
-	onChanged: (idea: Idea) => void;
-	onDeleted: (id: string) => void;
-}) {
+	onChangedAction,
+	onDeletedAction,
+}: IdeaListProps) {
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const [draft, setDraft] = useState("");
 	const [busyId, setBusyId] = useState<string | null>(null);
@@ -31,6 +33,7 @@ export default function IdeaList({
 		changes: Partial<Pick<Idea, "content" | "status">>,
 	) {
 		setBusyId(idea.id);
+		setError("");
 		const { data, error: updateError } = await createClient()
 			.from("ideas")
 			.update(changes)
@@ -41,7 +44,7 @@ export default function IdeaList({
 		if (updateError || !data)
 			setError("No pudimos actualizar la idea. Inténtalo de nuevo.");
 		else {
-			onChanged(data as Idea);
+			onChangedAction(data as Idea);
 			setEditingId(null);
 		}
 		setBusyId(null);
@@ -49,6 +52,8 @@ export default function IdeaList({
 
 	async function remove(idea: Idea) {
 		if (!window.confirm("¿Eliminar esta idea?")) return;
+		setBusyId(idea.id);
+		setError("");
 		const { error: deleteError } = await createClient()
 			.from("ideas")
 			.delete()
@@ -56,108 +61,117 @@ export default function IdeaList({
 			.eq("user_id", idea.user_id);
 		if (deleteError)
 			setError("No pudimos eliminar la idea. Inténtalo de nuevo.");
-		else onDeleted(idea.id);
+		else onDeletedAction(idea.id);
+		setBusyId(null);
 	}
 
 	if (ideas.length === 0)
 		return (
-			<p className="rounded-box border border-dashed border-base-300 p-6 text-center text-base-content/60">
-				Aún no hay ideas.
+			<p className="idea-empty-state">
+				Aún no hay ideas. Guarda una para verla aquí.
 			</p>
 		);
+
 	return (
-		<div className="space-y-3">
+		<div className="idea-list">
 			{error && (
-				<p className="text-sm text-error" role="alert">
+				<p className="task-form-error" role="alert">
 					{error}
 				</p>
 			)}
-			{ideas.map((idea) => (
-				<article
-					className="rounded-box border border-base-300 bg-base-100 p-4"
-					key={idea.id}
-				>
-					{editingId === idea.id ? (
-						<div className="space-y-3">
-							<textarea
-								className="textarea textarea-bordered w-full"
-								value={draft}
-								onChange={(event) => setDraft(event.target.value)}
-								maxLength={4000}
-							/>
-							<div className="flex gap-2">
-								<LoadingButton
-									className="btn btn-primary btn-sm"
-									onAction={() => {
-										const clean = draft.trim();
-										if (clean) return update(idea, { content: clean });
-										setError("El contenido de la idea es necesario.");
-										return Promise.reject(
-											new Error("El contenido de la idea es necesario."),
-										);
-									}}
-									pendingLabel="Guardando…"
-									onErrorAction={() =>
-										setError("El contenido de la idea es necesario.")
+			<div className="idea-sticky-grid">
+				{ideas.map((idea) => (
+					<article
+						className={`idea-sticky-card idea-status-${idea.status}`}
+						key={idea.id}
+					>
+						{editingId === idea.id ? (
+							<form
+								className="idea-sticky-edit"
+								onSubmit={(event) => {
+									event.preventDefault();
+									const clean = draft.trim();
+									if (!clean) {
+										setError("Escribe algo para guardar la idea.");
+										return;
 									}
-									disabled={busyId === idea.id}
-								>
-									Guardar
-								</LoadingButton>
-								<button
-									className="btn btn-ghost btn-sm"
-									type="button"
-									onClick={() => setEditingId(null)}
-									disabled={busyId === idea.id}
-								>
-									Cancelar
-								</button>
-							</div>
-						</div>
-					) : (
-						<>
-							<div className="flex flex-wrap items-start justify-between gap-3">
-								<p className="whitespace-pre-wrap">{idea.content}</p>
-								<select
-									className="select select-bordered select-sm"
-									value={idea.status}
-									onChange={(event) =>
-										void update(idea, {
-											status: event.target.value as IdeaStatus,
-										})
-									}
-									aria-label="Estado de la idea"
-								>
-									{(Object.keys(statuses) as IdeaStatus[]).map((status) => (
-										<option key={status} value={status}>
-											{statuses[status]}
-										</option>
-									))}
-								</select>
-							</div>
-							<div className="mt-3 flex gap-2">
-								<button
-									className="btn btn-ghost btn-sm"
-									type="button"
-									onClick={() => {
-										setEditingId(idea.id);
-										setDraft(idea.content);
-									}}
-								>
-									Editar
-								</button>
-								<button
-									className="btn btn-ghost btn-sm text-error"
-									type="button"
-									onClick={() => void remove(idea)}
-								>
-									Eliminar
-								</button>
-							</div>
-						</>
-					)}
-				</article>
-			))}
+									void update(idea, { content: clean });
+								}}
+							>
+								<textarea
+									className="idea-sticky-input"
+									value={draft}
+									onChange={(event) => setDraft(event.target.value)}
+									maxLength={4000}
+									aria-label="Editar idea"
+								/>
+								<div className="idea-card-actions">
+									<LoadingButton
+										className="idea-sticky-submit"
+										onAction={() => update(idea, { content: draft.trim() })}
+										pendingLabel="Guardando…"
+										disabled={busyId === idea.id || !draft.trim()}
+									>
+										Guardar
+									</LoadingButton>
+									<button
+										className="idea-text-button"
+										type="button"
+										onClick={() => setEditingId(null)}
+										disabled={busyId === idea.id}
+									>
+										Cancelar
+									</button>
+								</div>
+							</form>
+						) : (
+							<>
+								<p className="idea-sticky-content">{idea.content}</p>
+								<div className="idea-card-footer">
+									<select
+										className="idea-status-select"
+										value={idea.status}
+										disabled={busyId === idea.id}
+										onChange={(event) =>
+											void update(idea, {
+												status: event.target.value as IdeaStatus,
+											})
+										}
+										aria-label={`Estado de la idea: ${idea.content}`}
+									>
+										{(Object.keys(statuses) as IdeaStatus[]).map((status) => (
+											<option key={status} value={status}>
+												{statuses[status]}
+											</option>
+										))}
+									</select>
+									<div className="idea-card-actions">
+										<button
+											className="idea-text-button"
+											type="button"
+											onClick={() => {
+												setEditingId(idea.id);
+												setDraft(idea.content);
+											}}
+											disabled={busyId === idea.id}
+										>
+											Editar
+										</button>
+										<button
+											className="idea-text-button idea-delete-button"
+											type="button"
+											onClick={() => void remove(idea)}
+											disabled={busyId === idea.id}
+										>
+											Eliminar
+										</button>
+									</div>
+								</div>
+							</>
+						)}
+					</article>
+				))}
+			</div>
 		</div>
 	);
 }

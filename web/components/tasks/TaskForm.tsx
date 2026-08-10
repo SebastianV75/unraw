@@ -1,31 +1,32 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { LoadingButton } from "@/components/interior/loading-button";
+import { createClient } from "@/lib/supabase/client";
 import type { Task } from "@/types";
 
 type TaskFormProps = {
 	areaId: string;
 	projectId?: string;
-	onCreated: (task: Task) => void;
+	onCreatedAction: (task: Task) => void;
 };
 
 export default function TaskForm({
 	areaId,
 	projectId,
-	onCreated,
+	onCreatedAction,
 }: TaskFormProps) {
 	const [title, setTitle] = useState("");
 	const [notes, setNotes] = useState("");
 	const [dueDate, setDueDate] = useState("");
+	const [showOptions, setShowOptions] = useState(false);
 	const [error, setError] = useState("");
 	const [saving, setSaving] = useState(false);
 
 	async function handleSubmit() {
 		const cleanTitle = title.trim();
 		if (!cleanTitle) {
-			setError("El título de la tarea es necesario.");
+			setError("Escribe el título de la tarea.");
 			return;
 		}
 
@@ -60,57 +61,79 @@ export default function TaskForm({
 			return;
 		}
 
-		onCreated(data as Task);
+		onCreatedAction(data as Task);
 		setTitle("");
 		setNotes("");
 		setDueDate("");
+		setShowOptions(false);
 		setSaving(false);
 	}
 
 	return (
-		<form
-			className="space-y-3"
-			onSubmit={(event) => {
-				event.preventDefault();
-				void handleSubmit();
-			}}
-		>
-			<input
-				className="input input-bordered w-full"
-				placeholder="Título de la tarea"
-				value={title}
-				onChange={(event) => setTitle(event.target.value)}
-				maxLength={200}
-			/>
-			<div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-				<input
-					className="input input-bordered w-full"
-					placeholder="Notas (opcional)"
-					value={notes}
-					onChange={(event) => setNotes(event.target.value)}
-					maxLength={2000}
-				/>
-				<input
-					className="input input-bordered"
-					type="date"
-					value={dueDate}
-					onChange={(event) => setDueDate(event.target.value)}
-					aria-label="Fecha límite"
-				/>
-			</div>
+		<div className="task-capture">
+			<form
+				className="task-quick-form"
+				onSubmit={(event) => {
+					event.preventDefault();
+					void handleSubmit();
+				}}
+			>
+				<div className="task-quick-row">
+					<span className="task-quick-mark" aria-hidden="true">
+						+
+					</span>
+					<input
+						className="task-quick-input"
+						placeholder="Escribe una tarea…"
+						value={title}
+						onChange={(event) => setTitle(event.target.value)}
+						maxLength={200}
+						aria-label="Título de la tarea"
+					/>
+					<LoadingButton
+						className="task-quick-submit"
+						onAction={handleSubmit}
+						pendingLabel="Añadiendo…"
+						disabled={saving || !title.trim()}
+					>
+						Añadir
+					</LoadingButton>
+				</div>
+				<button
+					className="task-options-toggle"
+					type="button"
+					aria-expanded={showOptions}
+					onClick={() => setShowOptions((current) => !current)}
+				>
+					{showOptions ? "Ocultar opciones" : "Añadir fecha o nota"}
+				</button>
+				{showOptions && (
+					<div className="task-extra-fields">
+						<input
+							className="task-extra-input"
+							placeholder="Nota breve (opcional)"
+							value={notes}
+							onChange={(event) => setNotes(event.target.value)}
+							maxLength={2000}
+							aria-label="Nota de la tarea"
+						/>
+						<label className="task-date-field">
+							<span>Vence</span>
+							<input
+								className="task-extra-input"
+								type="date"
+								value={dueDate}
+								onChange={(event) => setDueDate(event.target.value)}
+							/>
+						</label>
+					</div>
+				)}
+			</form>
 			{error && (
-				<p className="text-sm text-error" role="alert">
+				<p className="task-form-error" role="alert">
 					{error}
 				</p>
 			)}
-			<LoadingButton
-				className="btn btn-primary"
-				onAction={handleSubmit}
-				pendingLabel="Creando…"
-				disabled={saving}
-			>
-				Añadir tarea
-			</LoadingButton>
-		</form>
+		</div>
 	);
 }
