@@ -68,7 +68,7 @@ export default function AreasPage() {
 	}
 
 	return (
-		<div className="mx-auto max-w-5xl space-y-8">
+		<div className="app-page app-areas-page space-y-8">
 			<header>
 				<p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">
 					Tu sistema

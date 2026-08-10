@@ -136,7 +136,7 @@ export function WaitlistForm({
 					type="submit"
 					className="landing-waitlist-submit"
 					onAction={submit}
-					onError={(actionError: unknown) => {
+					onErrorAction={(actionError: unknown) => {
 						if (validateEmail(email.trim().toLowerCase())) return;
 						if (!error) {
 							setError(

@@ -97,7 +97,7 @@ export default function IdeaList({
 										);
 									}}
 									pendingLabel="Guardando…"
-									onError={() =>
+									onErrorAction={() =>
 										setError("El contenido de la idea es necesario.")
 									}
 									disabled={busyId === idea.id}

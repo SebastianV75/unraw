@@ -98,7 +98,7 @@ export default function SettingsPage() {
 	}
 
 	return (
-		<div className="mx-auto max-w-3xl space-y-8">
+		<div className="app-page app-settings-page space-y-8">
 			<header>
 				<p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">
 					Cuenta

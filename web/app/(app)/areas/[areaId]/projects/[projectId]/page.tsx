@@ -158,7 +158,7 @@ export default function ProjectPage({
 		: 0;
 
 	return (
-		<div className="mx-auto max-w-4xl space-y-8">
+		<div className="app-page app-project-page space-y-8">
 			<header>
 				<Link className="text-sm text-primary" href={`/areas/${area.id}`}>
 					← {area.name}

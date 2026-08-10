@@ -24,8 +24,8 @@ const commands: CommandItem[] = [
 		keywords: "bandeja nota markdown captura",
 	},
 	{
-		label: "Resumen",
-		description: "Mira lo que requiere atención",
+		label: "Hoy",
+			description: "Mira lo que requiere atención",
 		href: "/overview",
 		keywords: "tareas hoy tablero resumen",
 	},

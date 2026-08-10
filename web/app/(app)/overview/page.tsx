@@ -1,37 +1,35 @@
 "use client";
 
+import ArrowRight4 from "reicon-react/icons/ArrowRight4";
+import Check3 from "reicon-react/icons/Check3";
+import InboxIcon from "reicon-react/icons/Inbox";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import Inbox from "reicon-react/icons/Inbox";
-import ArrowRight4 from "reicon-react/icons/ArrowRight4";
-import { createClient } from "@/lib/supabase/client";
-import type {
-	Area,
-	InboxItem,
-	ProfileView,
-	Project,
-	Task,
-	TaskStatus,
-} from "@/types";
-import { SegmentedControl } from "@/components/interior/segmented-control";
 import { SkeletonSwap } from "@/components/interior/skeleton-swap";
+import { createClient } from "@/lib/supabase/client";
+import type { Area, CaptureHistory, InboxItem, Project, Task } from "@/types";
 
-const taskColumns: { status: TaskStatus; label: string }[] = [
-	{ status: "pending", label: "Pendientes" },
-	{ status: "in_progress", label: "En curso" },
-	{ status: "done", label: "Hechas" },
-];
+function formatDate(value: string | null) {
+	if (!value) return "Sin fecha";
+	return new Intl.DateTimeFormat("es", {
+		day: "numeric",
+		month: "short",
+		year: "numeric",
+	}).format(new Date(value));
+}
+
+function taskLabel(task: Task) {
+	return task.status === "in_progress" ? "En curso" : "Pendiente";
+}
 
 export default function OverviewPage() {
 	const [areas, setAreas] = useState<Area[]>([]);
 	const [projects, setProjects] = useState<Project[]>([]);
 	const [tasks, setTasks] = useState<Task[]>([]);
 	const [inbox, setInbox] = useState<InboxItem[]>([]);
-	const [view, setView] = useState<ProfileView>("list");
-	const [status, setStatus] = useState<"all" | TaskStatus>("all");
+	const [history, setHistory] = useState<CaptureHistory[]>([]);
 	const [areaId, setAreaId] = useState("all");
 	const [loading, setLoading] = useState(true);
-	const [savingView, setSavingView] = useState(false);
 	const [error, setError] = useState("");
 
 	useEffect(() => {
@@ -46,17 +44,12 @@ export default function OverviewPage() {
 				return;
 			}
 			const [
-				profileResult,
 				areaResult,
 				projectResult,
 				taskResult,
 				inboxResult,
+				historyResult,
 			] = await Promise.all([
-				supabase
-					.from("profiles")
-					.select("preferred_view")
-					.eq("id", user.id)
-					.single(),
 				supabase.from("areas").select("*").eq("user_id", user.id).order("name"),
 				supabase
 					.from("projects")
@@ -68,321 +61,291 @@ export default function OverviewPage() {
 					.from("tasks")
 					.select("*")
 					.eq("user_id", user.id)
-					.order("due_date", { ascending: true, nullsFirst: false }),
+					.neq("status", "done")
+					.order("due_date", { ascending: true, nullsFirst: false })
+					.order("created_at", { ascending: false }),
 				supabase
 					.from("inbox_items")
 					.select("*")
 					.eq("needs_home", true)
 					.order("created_at", { ascending: false }),
+				supabase
+					.from("capture_batches")
+					.select(
+						"id, raw_note, status, output_snapshot, saved_references, archived_at, created_at, updated_at",
+					)
+					.eq("status", "saved")
+					.order("created_at", { ascending: false })
+					.limit(3),
 			]);
-			if (profileResult.error)
-				setError("No pudimos cargar tu preferencia de vista.");
-			else if (
-				profileResult.data?.preferred_view === "list" ||
-				profileResult.data?.preferred_view === "kanban"
-			)
-				setView(profileResult.data.preferred_view);
 			if (
 				areaResult.error ||
 				projectResult.error ||
 				taskResult.error ||
-				inboxResult.error
+				inboxResult.error ||
+				historyResult.error
 			)
-				setError("No pudimos cargar tu resumen.");
+				setError("No pudimos cargar tu orientación de hoy.");
 			setAreas((areaResult.data ?? []) as Area[]);
 			setProjects((projectResult.data ?? []) as Project[]);
 			setTasks((taskResult.data ?? []) as Task[]);
 			setInbox((inboxResult.data ?? []) as InboxItem[]);
+			setHistory((historyResult.data ?? []) as CaptureHistory[]);
 			setLoading(false);
 		}
 		void load();
 	}, []);
 
-	async function changeView(nextView: ProfileView) {
-		if (nextView === view || savingView) return;
-		const previousView = view;
-		setView(nextView);
-		setSavingView(true);
-		setError("");
-		const supabase = createClient();
-		const {
-			data: { user },
-		} = await supabase.auth.getUser();
-		const { error: updateError } = user
-			? await supabase
-					.from("profiles")
-					.update({ preferred_view: nextView })
-					.eq("id", user.id)
-			: { error: new Error("No user") };
-		if (updateError) {
-			setView(previousView);
-			setError("No pudimos guardar la vista. Restauramos la anterior.");
-		}
-		setSavingView(false);
-	}
-
-	const filteredTasks = useMemo(
+	const areaNames = useMemo(
+		() => new Map(areas.map((area) => [area.id, area.name])),
+		[areas],
+	);
+	const visibleTasks = useMemo(
 		() =>
-			tasks.filter(
-				(task) =>
-					task.status !== "done" &&
-					(status === "all" || task.status === status) &&
-					(areaId === "all" || task.area_id === areaId),
-			),
-		[tasks, status, areaId],
+			areaId === "all"
+				? tasks
+				: tasks.filter((task) => task.area_id === areaId),
+		[areaId, tasks],
 	);
-	const kanbanTasks = useMemo(
-		() => tasks.filter((task) => areaId === "all" || task.area_id === areaId),
-		[tasks, areaId],
-	);
-	const areaNames = new Map(areas.map((area) => [area.id, area.name]));
-	const taskCount = new Map<string, { total: number; completed: number }>();
-	projects.forEach((project) =>
-		taskCount.set(project.id, { total: 0, completed: 0 }),
-	);
-	tasks.forEach((task) => {
-		if (task.project_id && taskCount.has(task.project_id)) {
-			const count = taskCount.get(task.project_id)!;
-			count.total += 1;
-			if (task.status === "done") count.completed += 1;
-		}
-	});
-	const projectProgress = projects.map((project) => ({
-		project,
-		progress: taskCount.get(project.id) ?? { total: 0, completed: 0 },
-	}));
+	const nextTask = visibleTasks[0] ?? null;
+	const taskQueue = visibleTasks.slice(1, 5);
 
-	function renderTask(task: Task) {
-		return (
-			<article className="overview-card" key={task.id}>
-				<div className="flex justify-between gap-3">
-					<h3 className="font-medium">{task.title}</h3>
-					<span className="overview-meta">
-						{task.status === "in_progress" ? "En curso" : "Pendiente"}
-					</span>
-				</div>
-				<p className="mt-2 overview-meta">
-					{areaNames.get(task.area_id) ?? "Sin área"}
-					{task.due_date ? ` · ${task.due_date}` : ""}
-				</p>
-			</article>
-		);
-	}
+	const projectProgress = useMemo(() => {
+		return projects.slice(0, 4).map((project) => {
+			const projectTasks = tasks.filter(
+				(task) => task.project_id === project.id,
+			);
+			const completed = projectTasks.filter(
+				(task) => task.status === "done",
+			).length;
+			return {
+				project,
+				completed,
+				total: projectTasks.length,
+				percentage: projectTasks.length
+					? Math.round((completed / projectTasks.length) * 100)
+					: 0,
+			};
+		});
+	}, [projects, tasks]);
 
 	return (
-		<div className="overview-page mx-auto max-w-6xl space-y-10">
+		<div className="overview-page">
 			<header className="overview-header">
 				<div>
-					<p className="overview-label">Resumen</p>
+					<p className="overview-label">Orientación</p>
 					<h1>Hoy</h1>
 					<p className="overview-lead">
-						Un lugar tranquilo para ver lo que importa ahora.
+						Un lugar breve para volver a saber qué importa.
 					</p>
 				</div>
 				<Link className="overview-primary-action" href="/capture">
-					Capturar{" "}
+					Nueva captura
 					<ArrowRight4
 						size={16}
 						color="currentColor"
 						weight="Outline"
 						strokeWidth={1.7}
+						aria-hidden="true"
 					/>
 				</Link>
 			</header>
+
 			{error && (
 				<p className="overview-alert" role="alert">
 					{error}
 				</p>
 			)}
-			<SkeletonSwap ready={!loading} lines={8} reserve={420} label="Resumen">
-				{!loading ? (
-					<>
-						<section className="space-y-4">
-							<div className="overview-section-heading">
-								<div>
-									<p className="overview-label">Para ahora</p>
-									<h2>Tareas pendientes</h2>
+
+			<SkeletonSwap ready={!loading} lines={7} reserve={520} label="Hoy">
+				{!loading && (
+					<div className="overview-flow">
+						<section
+							className="overview-focus-card"
+							aria-labelledby="next-action-title"
+						>
+							<div className="overview-focus-copy">
+								<p className="overview-label">Siguiente acción</p>
+								<h2 id="next-action-title">
+									{nextTask ? nextTask.title : "Tu espacio está despejado."}
+								</h2>
+								{nextTask ? (
 									<p>
-										Solo lo necesario para seguir avanzando. No hace falta
-										hacerlo todo.
-									</p>
-								</div>
-								<div className="flex flex-wrap gap-2">
-									<SegmentedControl
-										label="Vista de tareas"
-										value={view}
-										onValueChange={(next) =>
-											void changeView(next as ProfileView)
-										}
-										options={[
-											{ value: "list", label: "Lista", disabled: savingView },
-											{
-												value: "kanban",
-												label: "Tablero",
-												disabled: savingView,
-											},
-										]}
-									/>
-									{view === "list" && (
-										<select
-											className="overview-select"
-											value={status}
-											onChange={(event) =>
-												setStatus(event.target.value as "all" | TaskStatus)
-											}
-											aria-label="Filtrar tareas por estado"
-										>
-											<option value="all">Todos los estados</option>
-											<option value="pending">Pendientes</option>
-											<option value="in_progress">En curso</option>
-										</select>
-									)}
-									<select
-										className="overview-select"
-										value={areaId}
-										onChange={(event) => setAreaId(event.target.value)}
-										aria-label="Filtrar tareas por área"
-									>
-										<option value="all">Todas las áreas</option>
-										{areas.map((area) => (
-											<option key={area.id} value={area.id}>
-												{area.name}
-											</option>
-										))}
-									</select>
-								</div>
-							</div>
-							{view === "list" ? (
-								filteredTasks.length === 0 ? (
-									<p className="overview-empty">
-										No hay tareas pendientes con estos filtros. Puedes respirar.
+										{areaNames.get(nextTask.area_id) ?? "Sin área"} ·{" "}
+										{taskLabel(nextTask)} · {formatDate(nextTask.due_date)}
 									</p>
 								) : (
-									<div className="grid gap-3 md:grid-cols-2">
-										{filteredTasks.map(renderTask)}
-									</div>
-								)
-							) : (
-								<div className="grid gap-4 lg:grid-cols-3">
-									{taskColumns.map((column) => {
-										const columnTasks = kanbanTasks.filter(
-											(task) => task.status === column.status,
-										);
-										return (
-											<section className="overview-column" key={column.status}>
-												<div className="flex items-center justify-between">
-													<h3>{column.label}</h3>
-													<span className="overview-meta">
-														{columnTasks.length}
-													</span>
-												</div>
-												{columnTasks.length === 0 ? (
-													<p className="overview-meta mt-4">Nada aquí.</p>
-												) : (
-													<div className="mt-3 space-y-3">
-														{columnTasks.map(renderTask)}
-													</div>
-												)}
-											</section>
-										);
-									})}
-								</div>
-							)}
-						</section>
-						{inbox.length > 0 && (
-							<section className="overview-inbox">
-								<div className="overview-section-heading">
-									<div>
-										<p className="overview-label">Sin clasificar</p>
-										<h2>Inbox</h2>
-										<p>
-											Algunas capturas esperan un lugar. Revísalas cuando tengas
-											espacio.
-										</p>
-									</div>
-									<Inbox
-										size={22}
+									<p>Captura algo nuevo cuando vuelva a aparecer una idea.</p>
+								)}
+							</div>
+							{nextTask ? (
+								<Link
+									className="overview-focus-action"
+									href={`/areas/${nextTask.area_id}`}
+								>
+									Abrir área
+									<ArrowRight4
+										size={15}
 										color="currentColor"
 										weight="Outline"
-										strokeWidth={1.6}
+										aria-hidden="true"
 									/>
-								</div>
-								<div className="mt-4 space-y-2">
-									{inbox.slice(0, 3).map((item) => (
-										<Link
-											className="overview-inbox-item"
-											href="/inbox"
-											key={item.id}
-										>
-											<span>{item.title ?? item.content}</span>
-											<ArrowRight4
-												size={16}
-												color="currentColor"
-												weight="Outline"
-												strokeWidth={1.7}
-											/>
-										</Link>
+								</Link>
+							) : (
+								<Check3
+									size={28}
+									color="currentColor"
+									weight="Outline"
+									aria-hidden="true"
+								/>
+							)}
+						</section>
+
+						<div className="overview-flow-controls">
+							<label className="overview-filter">
+								<span>Área</span>
+								<select
+									value={areaId}
+									onChange={(event) => setAreaId(event.target.value)}
+									aria-label="Filtrar Hoy por área"
+								>
+									<option value="all">Todas las áreas</option>
+									{areas.map((area) => (
+										<option key={area.id} value={area.id}>
+											{area.name}
+										</option>
 									))}
+								</select>
+							</label>
+							<span className="overview-flow-count">
+								{visibleTasks.length} pendientes
+							</span>
+						</div>
+
+						<div className="overview-flow-grid">
+							<section
+								className="overview-flow-section"
+								aria-labelledby="queue-title"
+							>
+								<div className="overview-section-heading">
+									<div>
+										<h2 id="queue-title">Después</h2>
+										<p>Una cola corta para no perder el hilo.</p>
+									</div>
 								</div>
-								{inbox.length > 3 && (
-									<Link className="overview-text-link" href="/inbox">
-										Ver las {inbox.length} capturas{" "}
-										<ArrowRight4
-											size={14}
-											color="currentColor"
-											weight="Outline"
-											strokeWidth={1.7}
-										/>
-									</Link>
+								{taskQueue.length === 0 ? (
+									<p className="overview-empty">
+										No hay más tareas pendientes.
+									</p>
+								) : (
+									<div className="overview-task-queue">
+										{taskQueue.map((task) => (
+											<Link
+												className="overview-task-row"
+												href={`/areas/${task.area_id}`}
+												key={task.id}
+											>
+												<span>{task.title}</span>
+												<small>
+													{areaNames.get(task.area_id) ?? "Sin área"}
+												</small>
+											</Link>
+										))}
+									</div>
 								)}
 							</section>
-						)}
-						<section className="space-y-4">
-							<div>
-								<p className="overview-label">En marcha</p>
-								<h2>Proyectos activos</h2>
-								<p>Un vistazo al progreso, sin presión.</p>
+
+							<section
+								className="overview-flow-section"
+								aria-labelledby="inbox-today-title"
+							>
+								<div className="overview-section-heading">
+									<div>
+										<h2 id="inbox-today-title">Sin hogar</h2>
+										<p>Decisiones que pueden esperar.</p>
+									</div>
+									<InboxIcon
+										size={20}
+										color="currentColor"
+										weight="Outline"
+										aria-hidden="true"
+									/>
+								</div>
+								{inbox.length === 0 ? (
+									<p className="overview-empty">Inbox despejado.</p>
+								) : (
+									<div className="overview-task-queue">
+										{inbox.slice(0, 3).map((item) => (
+											<Link
+												className="overview-task-row"
+												href="/inbox"
+												key={item.id}
+											>
+												<span>{item.title ?? item.content}</span>
+												<small>Revisar</small>
+											</Link>
+										))}
+									</div>
+								)}
+							</section>
+						</div>
+
+						<section
+							className="overview-flow-section overview-projects-section"
+							aria-labelledby="projects-today-title"
+						>
+							<div className="overview-section-heading">
+								<div>
+									<h2 id="projects-today-title">En marcha</h2>
+									<p>Contexto suficiente, sin pedirte otra decisión.</p>
+								</div>
+								<Link className="overview-text-link" href="/areas">
+									Ver áreas{" "}
+									<ArrowRight4
+										size={14}
+										color="currentColor"
+										weight="Outline"
+										aria-hidden="true"
+									/>
+								</Link>
 							</div>
 							{projectProgress.length === 0 ? (
 								<p className="overview-empty">
 									Todavía no hay proyectos activos.
 								</p>
 							) : (
-								<div className="grid gap-4 md:grid-cols-2">
-									{projectProgress.map(({ project, progress }) => {
-										const percentage = progress.total
-											? Math.round((progress.completed / progress.total) * 100)
-											: 0;
-										return (
+								<div className="overview-project-list">
+									{projectProgress.map(
+										({ project, completed, total, percentage }) => (
 											<Link
-												className="overview-card overview-project"
+												className="overview-project-row"
 												href={`/areas/${project.area_id}/projects/${project.id}`}
 												key={project.id}
 											>
-												<div className="flex justify-between gap-3">
-													<h3 className="font-medium">{project.name}</h3>
-													<span className="overview-meta">{percentage}%</span>
-												</div>
-												<p className="mt-1 overview-meta">
-													{areaNames.get(project.area_id) ?? "Sin área"}
-												</p>
-												<progress
-													className="progress progress-primary mt-4 w-full"
-													value={percentage}
-													max="100"
-												/>
-												<p className="mt-2 overview-meta">
-													{progress.completed} de {progress.total} tareas
-													completadas
-												</p>
+												<span>
+													<strong>{project.name}</strong>
+													<small>
+														{areaNames.get(project.area_id) ?? "Sin área"}
+													</small>
+												</span>
+												<span className="overview-project-progress">
+													{percentage}% · {completed}/{total}
+												</span>
 											</Link>
-										);
-									})}
+										),
+									)}
 								</div>
 							)}
 						</section>
-					</>
-				) : null}
+
+						{history.length > 0 && (
+							<p className="overview-history-note">
+								Última captura guardada {formatDate(history[0].created_at)} ·{" "}
+								<Link href="/inbox">Ver historial</Link>
+							</p>
+						)}
+					</div>
+				)}
 			</SkeletonSwap>
 		</div>
 	);
