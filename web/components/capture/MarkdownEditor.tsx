@@ -187,7 +187,9 @@ export function MarkdownEditor({
 			placeholder={
 				minimalVariant
 					? "Escribe lo que tengas en mente..."
-					: "Escribe lo que tengas en mente. Nosotros nos encargamos de ordenarlo.\n\nPuedes usar Markdown cuando lo necesites."
+					: documentVariant
+						? "Empieza a escribir…\n\nUsa la barra de formato cuando la necesites."
+						: "Escribe lo que tengas en mente. Nosotros nos encargamos de ordenarlo.\n\nPuedes usar Markdown cuando lo necesites."
 			}
 			autoFocus={autoFocus}
 			value={value}
@@ -310,7 +312,11 @@ export function MarkdownEditor({
 							: "flex flex-wrap items-center justify-between gap-3 border-t border-base-300 bg-base-200/50 px-5 py-3 text-xs text-base-content/55"
 					}
 				>
-					<span>Markdown · tablas GFM, listas y tachado</span>
+					<span>
+						{documentVariant
+							? "Escritura libre · formato cuando lo necesites"
+							: "Markdown · tablas GFM, listas y tachado"}
+					</span>
 					<span className={remaining < 500 ? "text-warning" : ""}>
 						{value.length.toLocaleString()} / {maxLength.toLocaleString()}
 					</span>

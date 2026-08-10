@@ -368,20 +368,22 @@ export default function AreaPage({
 						Todas las tareas de esta área, también las de sus proyectos.
 					</p>
 				</div>
-				<div className="rounded-box border border-base-300 bg-base-100 p-4">
+				<div className="task-capture-shell">
 					<TaskForm
 						areaId={area.id}
-						onCreated={(task) => setTasks((current) => [task, ...current])}
+						onCreatedAction={(task) =>
+							setTasks((current) => [task, ...current])
+						}
 					/>
 				</div>
 				<TaskList
 					tasks={tasks}
-					onStatusChanged={(task) =>
+					onStatusChangedAction={(task) =>
 						setTasks((current) =>
 							current.map((item) => (item.id === task.id ? task : item)),
 						)
 					}
-					onDeleted={(id) =>
+					onDeletedAction={(id) =>
 						setTasks((current) => current.filter((task) => task.id !== id))
 					}
 				/>
@@ -393,30 +395,31 @@ export default function AreaPage({
 						Guarda posibilidades sin convertirlas en tareas.
 					</p>
 				</div>
-				<div className="rounded-box border border-base-300 bg-base-100 p-4">
+				<div className="idea-capture-shell">
 					<IdeaForm
 						areaId={area.id}
-						onCreated={(idea) => setIdeas((current) => [idea, ...current])}
+						onCreatedAction={(idea) =>
+							setIdeas((current) => [idea, ...current])
+						}
 					/>
 				</div>
 				<IdeaList
 					ideas={ideas}
-					onChanged={(idea) =>
+					onChangedAction={(idea) =>
 						setIdeas((current) =>
 							current.map((item) => (item.id === idea.id ? idea : item)),
 						)
 					}
-					onDeleted={(id) =>
+					onDeletedAction={(id) =>
 						setIdeas((current) => current.filter((idea) => idea.id !== id))
 					}
 				/>
 			</section>
 			<section className="app-area-section app-area-notes-section space-y-4">
-				<div className="app-area-section-heading">
+				<div className="app-area-section-heading knowledge-note-section-heading">
 					<div>
-						<p className="app-section-kicker">Escritura</p>
-						<h2>Nueva nota</h2>
-						<p>Desarrolla una idea sin sacarla del contexto de {area.name}.</p>
+						<p className="app-section-kicker">Nota nueva · {area.name}</p>
+						<p>Escribe y conserva lo importante.</p>
 					</div>
 				</div>
 				<form
@@ -439,7 +442,6 @@ export default function AreaPage({
 						onChangeAction={setNoteContent}
 						maxLength={10000}
 						variant="document"
-						livePreview
 					/>
 					<div className="knowledge-note-footer">
 						<input

@@ -1,17 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { LoadingButton } from "@/components/interior/loading-button";
+import { createClient } from "@/lib/supabase/client";
 import type { Idea } from "@/types";
 
-export default function IdeaForm({
-	areaId,
-	onCreated,
-}: {
+type IdeaFormProps = {
 	areaId: string;
-	onCreated: (idea: Idea) => void;
-}) {
+	onCreatedAction: (idea: Idea) => void;
+};
+
+export default function IdeaForm({ areaId, onCreatedAction }: IdeaFormProps) {
 	const [content, setContent] = useState("");
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState("");
@@ -19,7 +18,7 @@ export default function IdeaForm({
 	async function submit() {
 		const cleanContent = content.trim();
 		if (!cleanContent) {
-			setError("El contenido de la idea es necesario.");
+			setError("Escribe algo para guardar la idea.");
 			return;
 		}
 		setSaving(true);
@@ -43,43 +42,55 @@ export default function IdeaForm({
 			})
 			.select("*")
 			.single();
-		if (insertError || !data)
-			setError("No pudimos crear la idea. Inténtalo de nuevo.");
-		else {
-			onCreated(data as Idea);
+		if (insertError || !data) {
+			setError("No pudimos guardar la idea. Inténtalo de nuevo.");
+		} else {
+			onCreatedAction(data as Idea);
 			setContent("");
 		}
 		setSaving(false);
 	}
 
 	return (
-		<form
-			className="space-y-3"
-			onSubmit={(event) => {
-				event.preventDefault();
-				void submit();
-			}}
-		>
-			<textarea
-				className="textarea textarea-bordered min-h-24 w-full"
-				placeholder="Captura una idea"
-				value={content}
-				onChange={(event) => setContent(event.target.value)}
-				maxLength={4000}
-			/>
+		<div className="idea-capture">
+			<form
+				className="idea-sticky-form"
+				onSubmit={(event) => {
+					event.preventDefault();
+					void submit();
+				}}
+			>
+				<textarea
+					className="idea-sticky-input"
+					placeholder="Escribe una idea…"
+					value={content}
+					onChange={(event) => setContent(event.target.value)}
+					maxLength={4000}
+					aria-label="Contenido de la idea"
+					onKeyDown={(event) => {
+						if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+							event.preventDefault();
+							void submit();
+						}
+					}}
+				/>
+				<div className="idea-sticky-footer">
+					<span>Una posibilidad · Ctrl/Cmd + Enter para guardar</span>
+					<LoadingButton
+						className="idea-sticky-submit"
+						onAction={submit}
+						pendingLabel="Guardando…"
+						disabled={saving || !content.trim()}
+					>
+						Guardar idea
+					</LoadingButton>
+				</div>
+			</form>
 			{error && (
-				<p className="text-sm text-error" role="alert">
+				<p className="task-form-error" role="alert">
 					{error}
 				</p>
 			)}
-			<LoadingButton
-				className="btn btn-primary"
-				onAction={submit}
-				pendingLabel="Creando…"
-				disabled={saving}
-			>
-				Añadir idea
-			</LoadingButton>
-		</form>
+		</div>
 	);
 }
