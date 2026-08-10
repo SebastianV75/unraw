@@ -32,6 +32,14 @@
       "sessions": 10,
       "memories": 64,
       "prompts": 37
+    },
+    {
+      "id": "08e03f2b",
+      "created_by": "sebas",
+      "created_at": "2026-08-10T23:43:37Z",
+      "sessions": 0,
+      "memories": 15,
+      "prompts": 14
     }
   ]
 }
