@@ -1,25 +1,32 @@
 "use client";
 
-import Link from "next/link";
-import { ReactNode, useEffect, useMemo, useState } from "react";
-import ArrowLeft4 from "reicon-react/icons/ArrowLeft4";
-import BookSaved from "reicon-react/icons/BookSaved";
-import Check3 from "reicon-react/icons/Check3";
-import DocumentText from "reicon-react/icons/DocumentText";
-import Bulb from "reicon-react/icons/Bulb";
-import ListCheck from "reicon-react/icons/ListCheck";
-import More from "reicon-react/icons/More";
-import type { IconComponent } from "reicon-react/createIcon";
+import { useEffect, useMemo, useState } from "react";
+import { CaptureReviewPanel } from "@/components/capture/CaptureReviewPanel";
 import { MarkdownEditor } from "@/components/capture/MarkdownEditor";
-import { MarkdownRenderer } from "@/components/capture/MarkdownRenderer";
 import { LoadingButton } from "@/components/interior/loading-button";
-import { ShowMore } from "@/components/interior/show-more";
-import { SkeletonSwap } from "@/components/interior/skeleton-swap";
 import { createClient } from "@/lib/supabase/client";
 import type { Area, CaptureOutput, CaptureSuggestion, Project } from "@/types";
 
 const suggestionKey = (suggestion: CaptureSuggestion) =>
 	`${suggestion.type}:${suggestion.name.toLowerCase()}`;
+
+function createIdempotencyKey() {
+	const webCrypto = globalThis.crypto;
+	if (typeof webCrypto?.randomUUID === "function")
+		return webCrypto.randomUUID();
+	const bytes = new Uint8Array(16);
+	if (typeof webCrypto?.getRandomValues === "function") {
+		webCrypto.getRandomValues(bytes);
+	} else {
+		for (let index = 0; index < bytes.length; index += 1)
+			bytes[index] = Math.floor(Math.random() * 256);
+	}
+	bytes[6] = (bytes[6] & 0x0f) | 0x40;
+	bytes[8] = (bytes[8] & 0x3f) | 0x80;
+	return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0"))
+		.join("")
+		.replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/, "$1-$2-$3-$4-$5");
+}
 
 export default function CapturePage() {
 	const [rawNote, setRawNote] = useState("");
@@ -132,7 +139,10 @@ export default function CapturePage() {
 			const response = await fetch("/api/ai/process-note", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ raw_note: rawNote }),
+				body: JSON.stringify({
+					raw_note: rawNote,
+					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+				}),
 			});
 			const body = (await response.json()) as CaptureOutput & {
 				error?: string;
@@ -152,9 +162,19 @@ export default function CapturePage() {
 					? caught.message
 					: "No pudimos procesar la nota.",
 			);
+		} finally {
+			setProcessing(false);
 		}
-		setProcessing(false);
 	}
+
+	const selectedArea = (
+		kind: string,
+		index: number,
+		fallback: string | null,
+	) =>
+		Object.prototype.hasOwnProperty.call(assignedAreas, `${kind}:${index}`)
+			? assignedAreas[`${kind}:${index}`]
+			: fallback;
 
 	async function saveResults() {
 		if (!result) return;
@@ -163,7 +183,6 @@ export default function CapturePage() {
 		setSuccess("");
 		try {
 			const assignments: Record<string, string | null> = {};
-			const confirmedSuggestions = suggestions;
 			const tasks = result.tasks
 				.map((item, index) => ({ item, index }))
 				.filter(({ index }) => !rejectedItems[`task:${index}`]);
@@ -173,6 +192,7 @@ export default function CapturePage() {
 			const secondBrain = result.second_brain
 				.map((item, index) => ({ item, index }))
 				.filter(({ index }) => !rejectedItems[`knowledge:${index}`]);
+
 			tasks.forEach(({ item, index }, outputIndex) => {
 				assignments[`task:${outputIndex}`] = selectedArea(
 					"task",
@@ -195,17 +215,17 @@ export default function CapturePage() {
 					item.area_id,
 				);
 			});
-			confirmedSuggestions.forEach((item) => {
-				if (approved[suggestionKey(item)]) {
-					assignments[`suggestion:${item.type}:${item.name.toLowerCase()}`] =
-						"00000000-0000-0000-0000-000000000000";
-					if (item.type === "new_project")
-						assignments[
-							`suggestion-area:${item.type}:${item.name.toLowerCase()}`
-						] = projectAreas[suggestionKey(item)] || item.area_id || null;
-				}
+			suggestions.forEach((item) => {
+				if (!approved[suggestionKey(item)]) return;
+				assignments[`suggestion:${item.type}:${item.name.toLowerCase()}`] =
+					"00000000-0000-0000-0000-000000000000";
+				if (item.type === "new_project")
+					assignments[
+						`suggestion-area:${item.type}:${item.name.toLowerCase()}`
+					] = projectAreas[suggestionKey(item)] || item.area_id || null;
 			});
-			const key = idempotencyKey || crypto.randomUUID();
+
+			const key = idempotencyKey || createIdempotencyKey();
 			setIdempotencyKey(key);
 			const response = await fetch("/api/captures/save", {
 				method: "POST",
@@ -218,7 +238,7 @@ export default function CapturePage() {
 						tasks: tasks.map(({ item }) => item),
 						ideas: ideas.map(({ item }) => item),
 						second_brain: secondBrain.map(({ item }) => item),
-						suggestions: confirmedSuggestions,
+						suggestions,
 					},
 					assignments,
 				}),
@@ -226,9 +246,7 @@ export default function CapturePage() {
 			const body = (await response.json()) as { error?: string };
 			if (!response.ok)
 				throw new Error(body.error || "No pudimos guardar la captura.");
-			setSuccess(
-				"Elementos confirmados guardados. Lo que no tenga destino está en Inbox.",
-			);
+			setSuccess("Guardado. Lo que no tenga destino está en Inbox.");
 			setResult(null);
 			setRawNote("");
 			setIdempotencyKey("");
@@ -239,198 +257,50 @@ export default function CapturePage() {
 					? caught.message
 					: "No pudimos guardar la captura.",
 			);
+		} finally {
+			setSaving(false);
 		}
-		setSaving(false);
+	}
+
+	function saveEdit(kind: string, index: number) {
+		const key = `${kind}:${index}`;
+		const value = editedValues[key]?.trim();
+		if (!value || !result) return;
+		if (kind === "task") {
+			setResult({
+				...result,
+				tasks: result.tasks.map((item, itemIndex) =>
+					itemIndex === index ? { ...item, title: value } : item,
+				),
+			});
+		} else if (kind === "idea") {
+			setResult({
+				...result,
+				ideas: result.ideas.map((item, itemIndex) =>
+					itemIndex === index ? { ...item, content: value } : item,
+				),
+			});
+		} else {
+			setResult({
+				...result,
+				second_brain: result.second_brain.map((item, itemIndex) =>
+					itemIndex === index ? { ...item, title: value } : item,
+				),
+			});
+		}
+		setEditingItem(null);
 	}
 
 	const areaNames = new Map(areas.map((area) => [area.id, area.name]));
 	const projectNames = new Map(
 		projects.map((project) => [project.id, project.name]),
 	);
-	const selectedArea = (
-		kind: string,
-		index: number,
-		fallback: string | null,
-	) =>
-		Object.prototype.hasOwnProperty.call(assignedAreas, `${kind}:${index}`)
-			? assignedAreas[`${kind}:${index}`]
-			: fallback;
-	const areaSelect = (kind: string, index: number, current: string | null) => (
-		<select
-			className="select select-bordered select-xs mt-2"
-			value={selectedArea(kind, index, current) ?? ""}
-			onChange={(event) =>
-				setAssignedAreas((areas) => ({
-					...areas,
-					[`${kind}:${index}`]: event.target.value || null,
-				}))
-			}
-			aria-label={`Asignar ${kind} ${index + 1} a un área`}
-		>
-			<option value="">Sin destino todavía</option>
-			{areas.map((area) => (
-				<option value={area.id} key={area.id}>
-					{area.name}
-				</option>
-			))}
-		</select>
-	);
-	const editKey = (kind: string, index: number) => `${kind}:${index}`;
-	const beginEdit = (kind: string, index: number, value: string) => {
-		setEditedValues((current) => ({
-			...current,
-			[editKey(kind, index)]: value,
-		}));
-		setEditingItem(editKey(kind, index));
-	};
-	const saveEdit = (kind: string, index: number) => {
-		const key = editKey(kind, index);
-		const value = editedValues[key]?.trim();
-		if (!value || !result) return;
-		setResult({
-			...result,
-			[kind === "task" ? "tasks" : kind === "idea" ? "ideas" : "second_brain"]:
-				(kind === "task"
-					? result.tasks
-					: kind === "idea"
-						? result.ideas
-						: result.second_brain
-				).map((item, itemIndex) =>
-					itemIndex === index
-						? kind === "task"
-							? { ...item, title: value }
-							: kind === "idea"
-								? { ...item, content: value }
-								: { ...item, title: value }
-						: item,
-				),
-		} as CaptureOutput);
-		setEditingItem(null);
-	};
-	const reviewControls = (kind: string, index: number, value: string) => {
-		const key = editKey(kind, index);
-		if (rejectedItems[key])
-			return (
-				<p className="mt-3 text-sm text-base-content/60">
-					Descartado; este elemento no se guardará.
-				</p>
-			);
-		if (editingItem === key)
-			return (
-				<div className="mt-3 space-y-2">
-					<label className="sr-only" htmlFor={`edit-${key}`}>
-						Editar {kind} {index + 1}
-					</label>
-					<textarea
-						id={`edit-${key}`}
-						className="textarea textarea-bordered w-full"
-						value={editedValues[key] ?? value}
-						onChange={(event) =>
-							setEditedValues((current) => ({
-								...current,
-								[key]: event.target.value,
-							}))
-						}
-					/>
-					<div className="flex gap-2">
-						<button
-							type="button"
-							className="btn btn-primary btn-xs"
-							onClick={() => saveEdit(kind, index)}
-						>
-							Guardar edición
-						</button>
-						<button
-							type="button"
-							className="btn btn-ghost btn-xs"
-							onClick={() => setEditingItem(null)}
-						>
-							Cancelar
-						</button>
-					</div>
-				</div>
-			);
-		return (
-			<div className="mt-3 flex gap-2">
-				<button
-					type="button"
-					className="btn btn-ghost btn-xs"
-					onClick={() => beginEdit(kind, index, value)}
-				>
-					Editar elemento
-				</button>
-				<button
-					type="button"
-					className="btn btn-ghost btn-xs text-error"
-					onClick={() =>
-						setRejectedItems((current) => ({ ...current, [key]: true }))
-					}
-				>
-					Rechazar elemento
-				</button>
-			</div>
-		);
-	};
-	const resultCount = result
-		? result.tasks.length + result.ideas.length + result.second_brain.length
-		: 0;
+
 	return (
-		<div className="capture-document -mx-4 -my-4 min-h-[calc(100vh-2rem)] px-5 py-4 md:-mx-8 md:-my-8 md:px-10 md:py-6">
-			<div className="capture-document-topbar">
-				<div className="flex min-w-0 items-center gap-3">
-					<Link
-						className="capture-document-back"
-						href="/overview"
-						aria-label="Volver al resumen"
-					>
-						<ArrowLeft4
-							size={15}
-							color="currentColor"
-							weight="Outline"
-							strokeWidth={1.7}
-							aria-hidden="true"
-						/>
-						<span>Resumen</span>
-					</Link>
-					<span className="capture-document-divider">/</span>
-					<span className="truncate">Capturar</span>
-				</div>
-				<div className="capture-document-context">
-					<DocumentText
-						size={14}
-						color="currentColor"
-						weight="Outline"
-						strokeWidth={1.7}
-						aria-hidden="true"
-					/>
-					Markdown
-				</div>
-				<div className="flex items-center gap-3">
-					<button
-						className="capture-document-menu"
-						type="button"
-						aria-label="Más opciones de nota"
-					>
-						<More
-							size={17}
-							color="currentColor"
-							weight="Outline"
-							strokeWidth={1.7}
-							aria-hidden="true"
-						/>
-					</button>
-				</div>
-			</div>
-			<div className="capture-document-content">
-				<header className="capture-note-heading">
-					<p className="capture-note-kicker">Captura rápida</p>
-					<h1>Captura una idea</h1>
-					<p>
-						Escríbelo tal como aparece. Unraw te ayuda con el siguiente paso.
-					</p>
-				</header>
+		<div className={`capture-workspace ${result ? "has-result" : "is-empty"}`}>
+			<div className="capture-minimal-shell">
 				<form
-					className="capture-note-form"
+					className="capture-minimal-form"
 					onSubmit={(event) => {
 						event.preventDefault();
 						void process();
@@ -441,31 +311,28 @@ export default function CapturePage() {
 						onChangeAction={setRawNote}
 						maxLength={12000}
 						disabled={processing}
-						variant="document"
+						variant="minimal"
+						autoFocus={!result}
 					/>
-					<div className="capture-note-actions">
-						<p>Tu Markdown se envía al organizador sin cambios.</p>
+					<div className="capture-minimal-actions">
+						<span className="sr-only">
+							Ordenaremos tu captura después de enviarla.
+						</span>
 						<LoadingButton
-							className="capture-primary-action"
+							className="capture-process-action"
 							onAction={process}
-							pendingLabel="Procesando…"
+							pendingLabel="Ordenando…"
 							disabled={loading || !rawNote.trim()}
 						>
-							Procesar con IA
+							Ordenar
 						</LoadingButton>
 					</div>
 				</form>
-				<SkeletonSwap
-					ready={!loading}
-					lines={2}
-					reserve={40}
-					label="Contexto del sistema"
-					skeleton={
-						<p className="capture-loading">Cargando tus áreas y proyectos…</p>
-					}
-				>
-					<span className="sr-only">Contexto del sistema cargado.</span>
-				</SkeletonSwap>
+				{processing && (
+					<p className="capture-ai-status" role="status" aria-live="polite">
+						Estamos ordenando tu captura…
+					</p>
+				)}
 				{error && (
 					<p className="capture-alert capture-alert-error" role="alert">
 						{error}
@@ -477,208 +344,48 @@ export default function CapturePage() {
 					</p>
 				)}
 				{result && (
-					<div className="capture-result-area">
-						<section className="capture-result-summary" aria-live="polite">
-							<div>
-								<Check3
-									size={16}
-									color="currentColor"
-									weight="Outline"
-									strokeWidth={1.7}
-									aria-hidden="true"
-								/>
-								<span className="capture-result-summary-label">
-									Resumen listo
-								</span>
-								<strong>
-									{resultCount}{" "}
-									{resultCount === 1 ? "elemento listo" : "elementos listos"}
-								</strong>
-							</div>
-						</section>
-						<ShowMore
-							moreLabel="Revisar detalles"
-							lessLabel="Ocultar detalles"
-							label="Detalles del resumen"
-							lines={2}
-							maxHeight={900}
-							className="mt-3"
-						>
-							<div className="capture-results-wrapper space-y-6">
-								<section className="capture-results-grid grid gap-4 md:grid-cols-3">
-									<CaptureGroup title="Tareas" icon={ListCheck}>
-										{result.tasks.map((item, index) => (
-											<article
-												className="capture-result-card rounded-box border p-4"
-												key={`${item.title}-${index}`}
-											>
-												<MarkdownRenderer content={item.title} compact />
-												<p className="mt-2 text-xs text-base-content/60">
-													{areaNames.get(item.area_id ?? "") ??
-														item.suggested_new_area ??
-														"Sin área todavía"}
-													{item.project_id && projectNames.get(item.project_id)
-														? ` / ${projectNames.get(item.project_id)}`
-														: item.suggested_new_project
-															? ` / ${item.suggested_new_project}`
-															: ""}
-												</p>
-												{areaSelect("task", index, item.area_id)}
-												{reviewControls("task", index, item.title)}
-											</article>
-										))}
-									</CaptureGroup>
-									<CaptureGroup title="Ideas" icon={Bulb}>
-										{result.ideas.map((item, index) => (
-											<article
-												className="capture-result-card rounded-box border p-4"
-												key={`${item.content}-${index}`}
-											>
-												<MarkdownRenderer content={item.content} />
-												<p className="mt-2 text-xs text-base-content/60">
-													{areaNames.get(item.area_id ?? "") ??
-														item.suggested_new_area ??
-														"Sin área todavía"}
-												</p>
-												{areaSelect("idea", index, item.area_id)}
-												{reviewControls("idea", index, item.content)}
-											</article>
-										))}
-									</CaptureGroup>
-									<CaptureGroup title="Conocimiento" icon={BookSaved}>
-										{result.second_brain.map((item, index) => (
-											<article
-												className="capture-result-card rounded-box border p-4"
-												key={`${item.title}-${index}`}
-											>
-												<MarkdownRenderer
-													content={`## ${item.title}\n\n${item.content}`}
-												/>
-												<p className="mt-2 text-xs text-base-content/60">
-													{areaNames.get(item.area_id ?? "") ??
-														item.suggested_new_area ??
-														"Sin área todavía"}
-												</p>
-												{areaSelect("knowledge", index, item.area_id)}
-												{reviewControls("knowledge", index, item.title)}
-											</article>
-										))}
-									</CaptureGroup>
-								</section>
-								{suggestions.length > 0 && (
-									<section className="capture-suggestions space-y-4 rounded-box border p-5">
-										<div>
-											<h2 className="text-xl font-semibold">
-												Sugerencias para revisar
-											</h2>
-											<p className="mt-1 text-sm text-base-content/70">
-												Nada se crea automáticamente. Confirma solo lo que
-												quieras incorporar a tu sistema.
-											</p>
-										</div>
-										{suggestions.map((suggestion) => (
-											<div
-												className="capture-suggestion-row flex flex-col gap-3 rounded-box border p-4 sm:flex-row sm:items-center"
-												key={suggestionKey(suggestion)}
-											>
-												<label className="flex flex-1 gap-3">
-													<input
-														className="checkbox checkbox-primary mt-1"
-														type="checkbox"
-														checked={Boolean(
-															approved[suggestionKey(suggestion)],
-														)}
-														onChange={(event) =>
-															setApproved((current) => ({
-																...current,
-																[suggestionKey(suggestion)]:
-																	event.target.checked,
-															}))
-														}
-													/>
-													<span>
-														<strong>{suggestion.name}</strong>
-														<span className="block text-sm text-base-content/60">
-															{suggestion.reason}
-														</span>
-													</span>
-												</label>
-												{suggestion.type === "new_project" && (
-													<select
-														className="select select-bordered select-sm"
-														value={
-															projectAreas[suggestionKey(suggestion)] ??
-															suggestion.area_id ??
-															""
-														}
-														onChange={(event) =>
-															setProjectAreas((current) => ({
-																...current,
-																[suggestionKey(suggestion)]: event.target.value,
-															}))
-														}
-														aria-label={`Área para ${suggestion.name}`}
-													>
-														<option value="">Elegir área</option>
-														{areas.map((area) => (
-															<option value={area.id} key={area.id}>
-																{area.name}
-															</option>
-														))}
-													</select>
-												)}
-											</div>
-										))}
-									</section>
-								)}
-								<div className="flex justify-end">
-									<LoadingButton
-										className="capture-primary-action"
-										onAction={saveResults}
-										disabled={saving}
-										pendingLabel="Guardando…"
-									>
-										Guardar elementos confirmados
-									</LoadingButton>
-								</div>
-							</div>
-						</ShowMore>
-					</div>
+					<CaptureReviewPanel
+						result={result}
+						areas={areas}
+						areaNames={areaNames}
+						projectNames={projectNames}
+						suggestions={suggestions}
+						approved={approved}
+						assignedAreas={assignedAreas}
+						rejectedItems={rejectedItems}
+						editingItem={editingItem}
+						editedValues={editedValues}
+						projectAreas={projectAreas}
+						saving={saving}
+						onAssignedAreaChange={(kind, index, value) =>
+							setAssignedAreas((current) => ({
+								...current,
+								[`${kind}:${index}`]: value,
+							}))
+						}
+						onApprove={(key, checked) =>
+							setApproved((current) => ({ ...current, [key]: checked }))
+						}
+						onProjectAreaChange={(key, value) =>
+							setProjectAreas((current) => ({ ...current, [key]: value }))
+						}
+						onBeginEdit={(kind, index, value) => {
+							const key = `${kind}:${index}`;
+							setEditedValues((current) => ({ ...current, [key]: value }));
+							setEditingItem(key);
+						}}
+						onEditedValueChange={(key, value) =>
+							setEditedValues((current) => ({ ...current, [key]: value }))
+						}
+						onSaveEdit={saveEdit}
+						onCancelEdit={() => setEditingItem(null)}
+						onReject={(key) =>
+							setRejectedItems((current) => ({ ...current, [key]: true }))
+						}
+						onSave={saveResults}
+					/>
 				)}
 			</div>
 		</div>
-	);
-}
-
-function CaptureGroup({
-	title,
-	icon,
-	children,
-}: {
-	title: string;
-	icon: IconComponent;
-	children: ReactNode;
-}) {
-	const Icon = icon;
-	return (
-		<section className="capture-group space-y-3 rounded-box p-4 shadow-sm">
-			<h2 className="text-xl font-semibold">
-				<Icon
-					size={17}
-					color="currentColor"
-					weight="Outline"
-					strokeWidth={1.7}
-					aria-hidden="true"
-				/>
-				<span>{title}</span>
-			</h2>
-			<div className="space-y-3">
-				{children || (
-					<p className="text-sm text-base-content/60">
-						No encontramos elementos.
-					</p>
-				)}
-			</div>
-		</section>
 	);
 }

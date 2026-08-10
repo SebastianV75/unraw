@@ -19,7 +19,9 @@ type MarkdownEditorProps = {
 	onChangeAction: (value: string) => void;
 	disabled?: boolean;
 	maxLength?: number;
-	variant?: "default" | "document";
+	variant?: "default" | "document" | "minimal";
+	autoFocus?: boolean;
+	livePreview?: boolean;
 };
 
 type ToolbarAction = {
@@ -110,8 +112,11 @@ export function MarkdownEditor({
 	disabled = false,
 	maxLength = 12000,
 	variant = "default",
+	autoFocus = false,
+	livePreview = false,
 }: MarkdownEditorProps) {
 	const documentVariant = variant === "document";
+	const minimalVariant = variant === "minimal";
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const [mode, setMode] = useState<"write" | "preview">("write");
 
@@ -169,120 +174,148 @@ export function MarkdownEditor({
 	}
 
 	const remaining = maxLength - value.length;
+	const editorTextarea = (
+		<textarea
+			ref={textareaRef}
+			className={
+				documentVariant
+					? "markdown-document-textarea"
+					: minimalVariant
+						? "markdown-minimal-textarea"
+						: "min-h-[22rem] w-full resize-y border-0 bg-transparent px-6 py-5 text-[1.05rem] leading-8 text-base-content outline-none placeholder:text-base-content/35"
+			}
+			placeholder={
+				minimalVariant
+					? "Escribe lo que tengas en mente..."
+					: "Escribe lo que tengas en mente. Nosotros nos encargamos de ordenarlo.\n\nPuedes usar Markdown cuando lo necesites."
+			}
+			autoFocus={autoFocus}
+			value={value}
+			onChange={(event) => onChangeAction(event.target.value)}
+			onKeyDown={handleKeyDown}
+			maxLength={maxLength}
+			disabled={disabled}
+			aria-label="Nota en Markdown"
+		/>
+	);
+	const previewPanel = (
+		<div
+			className={
+				documentVariant
+					? "markdown-document-preview"
+					: "min-h-[22rem] px-6 py-5"
+			}
+		>
+			<MarkdownRenderer content={value} />
+		</div>
+	);
 
 	return (
 		<div
 			className={
 				documentVariant
 					? "markdown-editor markdown-editor-document"
-					: "overflow-hidden rounded-2xl border border-base-300 bg-base-100 shadow-sm transition-shadow focus-within:border-primary/50 focus-within:shadow-md"
+					: minimalVariant
+						? "markdown-editor markdown-editor-minimal"
+						: "overflow-hidden rounded-2xl border border-base-300 bg-base-100 shadow-sm transition-shadow focus-within:border-primary/50 focus-within:shadow-md"
 			}
 		>
-			<div
-				className={
-					documentVariant
-						? "markdown-editor-toolbar markdown-editor-toolbar-document"
-						: "flex flex-wrap items-center justify-between gap-3 border-b border-base-300 px-3 py-2"
-				}
-			>
-				<div
-					className="flex items-center gap-1"
-					aria-label="Formato Markdown"
-				>
-					{toolbarActions.map((action) => {
-						const Icon = action.icon;
-						return (
-							<button
-								className={
-									documentVariant
-										? "markdown-toolbar-button"
-										: "btn btn-ghost btn-sm min-w-8 px-2 font-mono text-sm"
-								}
-								key={action.hint}
-								type="button"
-								onClick={() => applyAction(action)}
-								disabled={disabled}
-								title={action.hint}
-								aria-label={action.hint}
-							>
-								<Icon size={15} color="currentColor" weight="Outline" strokeWidth={1.7} aria-hidden="true" />
-							</button>
-						);
-					})}
-				</div>
+			{!minimalVariant && (
 				<div
 					className={
 						documentVariant
-							? "markdown-editor-tabs"
-							: "join rounded-lg bg-base-200 p-1"
+							? "markdown-editor-toolbar markdown-editor-toolbar-document"
+							: "flex flex-wrap items-center justify-between gap-3 border-b border-base-300 px-3 py-2"
 					}
-					role="tablist"
-					aria-label="Vista del editor"
 				>
-					{(["write", "preview"] as const).map((tab) => (
-						<button
+					<div
+						className="flex items-center gap-1"
+						aria-label="Formato Markdown"
+					>
+						{toolbarActions.map((action) => {
+							const Icon = action.icon;
+							return (
+								<button
+									className={
+										documentVariant
+											? "markdown-toolbar-button"
+											: "btn btn-ghost btn-sm min-w-8 px-2 font-mono text-sm"
+									}
+									key={action.hint}
+									type="button"
+									onClick={() => applyAction(action)}
+									disabled={disabled}
+									title={action.hint}
+									aria-label={action.hint}
+								>
+									<Icon
+										size={15}
+										color="currentColor"
+										weight="Outline"
+										strokeWidth={1.7}
+										aria-hidden="true"
+									/>
+								</button>
+							);
+						})}
+					</div>
+					{!livePreview && (
+						<div
 							className={
 								documentVariant
-									? `markdown-editor-tab ${mode === tab ? "is-active" : ""}`
-									: `join-item btn btn-xs ${mode === tab ? "btn-base-100 shadow-sm" : "btn-ghost"}`
+									? "markdown-editor-tabs"
+									: "join rounded-lg bg-base-200 p-1"
 							}
-							key={tab}
-							type="button"
-							role="tab"
-							aria-selected={mode === tab}
-							onClick={() => setMode(tab)}
-							disabled={disabled && tab === "write"}
+							role="tablist"
+							aria-label="Vista del editor"
 						>
-							{tab === "write" ? "Escribir" : "Vista previa"}
-						</button>
-					))}
-				</div>
-			</div>
-
-			{mode === "write" ? (
-				<textarea
-					ref={textareaRef}
-					className={
-						documentVariant
-							? "markdown-document-textarea"
-							: "min-h-[22rem] w-full resize-y border-0 bg-transparent px-6 py-5 text-[1.05rem] leading-8 text-base-content outline-none placeholder:text-base-content/35"
-					}
-					placeholder={
-						"Empieza a escribir en Markdown…\n\nTry # headings, **bold**, - lists, [links](https://), or ```code```."
-					}
-					value={value}
-					onChange={(event) => onChangeAction(event.target.value)}
-					onKeyDown={handleKeyDown}
-					maxLength={maxLength}
-					disabled={disabled}
-					aria-label="Nota en Markdown"
-				/>
-			) : (
-				<div
-					className={
-						documentVariant
-							? "markdown-document-preview"
-							: "min-h-[22rem] px-6 py-5"
-					}
-				>
-					<MarkdownRenderer content={value} />
+							{(["write", "preview"] as const).map((tab) => (
+								<button
+									className={
+										documentVariant
+											? `markdown-editor-tab ${mode === tab ? "is-active" : ""}`
+											: `join-item btn btn-xs ${mode === tab ? "btn-base-100 shadow-sm" : "btn-ghost"}`
+									}
+									key={tab}
+									type="button"
+									role="tab"
+									aria-selected={mode === tab}
+									onClick={() => setMode(tab)}
+									disabled={disabled && tab === "write"}
+								>
+									{tab === "write" ? "Escribir" : "Vista previa"}
+								</button>
+							))}
+						</div>
+					)}
 				</div>
 			)}
 
-			<div
-				className={
-					documentVariant
-						? "markdown-editor-footer markdown-editor-footer-document"
-						: "flex flex-wrap items-center justify-between gap-3 border-t border-base-300 bg-base-200/50 px-5 py-3 text-xs text-base-content/55"
-				}
-			>
-				<span>
-					Markdown · tablas GFM, listas y tachado
-				</span>
-				<span className={remaining < 500 ? "text-warning" : ""}>
-					{value.length.toLocaleString()} / {maxLength.toLocaleString()}
-				</span>
-			</div>
+			{livePreview ? (
+				<div className="markdown-editor-live-grid">
+					{editorTextarea}
+					{previewPanel}
+				</div>
+			) : mode === "write" ? (
+				editorTextarea
+			) : (
+				previewPanel
+			)}
+
+			{!minimalVariant && (
+				<div
+					className={
+						documentVariant
+							? "markdown-editor-footer markdown-editor-footer-document"
+							: "flex flex-wrap items-center justify-between gap-3 border-t border-base-300 bg-base-200/50 px-5 py-3 text-xs text-base-content/55"
+					}
+				>
+					<span>Markdown · tablas GFM, listas y tachado</span>
+					<span className={remaining < 500 ? "text-warning" : ""}>
+						{value.length.toLocaleString()} / {maxLength.toLocaleString()}
+					</span>
+				</div>
+			)}
 		</div>
 	);
 }

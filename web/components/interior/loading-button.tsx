@@ -21,13 +21,13 @@ export type AsyncActionStatus = "idle" | "pending" | "success" | "error";
 export type UseAsyncActionOptions = {
 	action: () => unknown;
 	resetAfter?: number;
-	onError?: (error: unknown) => void;
+	onErrorAction?: (error: unknown) => void;
 };
 
 export function useAsyncAction({
 	action,
 	resetAfter = 1400,
-	onError,
+	onErrorAction,
 }: UseAsyncActionOptions) {
 	const [status, setStatus] = useState<AsyncActionStatus>("idle");
 	const phase = useRef<AsyncActionStatus>("idle");
@@ -35,11 +35,11 @@ export function useAsyncAction({
 	const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const alive = useRef(true);
 	const actionRef = useRef(action);
-	const errorRef = useRef(onError);
+	const errorRef = useRef(onErrorAction);
 
 	useEffect(() => {
 		actionRef.current = action;
-		errorRef.current = onError;
+		errorRef.current = onErrorAction;
 	});
 
 	const clear = useCallback(() => {
@@ -97,7 +97,7 @@ export type LoadingButtonProps = Omit<
 	successLabel?: string;
 	errorLabel?: string;
 	resetAfter?: number;
-	onError?: (error: unknown) => void;
+	onErrorAction?: (error: unknown) => void;
 };
 
 export function LoadingButton({
@@ -107,7 +107,7 @@ export function LoadingButton({
 	successLabel = "Done",
 	errorLabel = "Try again",
 	resetAfter = 1400,
-	onError,
+	onErrorAction,
 	className = "",
 	type = "button",
 	disabled = false,
@@ -117,7 +117,7 @@ export function LoadingButton({
 	const { status, run, pending } = useAsyncAction({
 		action: onAction,
 		resetAfter,
-		onError,
+		onErrorAction,
 	});
 	const label =
 		status === "pending"
@@ -196,7 +196,7 @@ export function LoadingButton({
 									: { opacity: 0, y: 3, filter: "blur(3px)" }
 							}
 							transition={fade}
-							className={`col-start-1 row-start-1 flex items-center justify-center gap-1.5 whitespace-nowrap ${face.key === "success" ? "text-[var(--success)]" : face.key === "error" ? "text-[var(--danger)]" : "text-[var(--text-primary)]"}`}
+							className={`col-start-1 row-start-1 flex items-center justify-center gap-1.5 whitespace-nowrap ${face.key === "success" ? "text-[var(--success)]" : face.key === "error" ? "text-[var(--danger)]" : "text-current"}`}
 						>
 							{face.key === "pending" ? (
 								<motion.span

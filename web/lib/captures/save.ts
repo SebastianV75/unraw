@@ -30,7 +30,8 @@ export async function saveCapture(body: unknown): Promise<SaveCaptureResult> {
   const ideas = input.confirmed_output.ideas.map((item, i) => ({ ...item, area_id: area("idea", i, item.area_id) }))
   const secondBrain = input.confirmed_output.second_brain.map((item, i) => ({ ...item, area_id: area("knowledge", i, item.area_id) }))
   const approved = input.confirmed_output.suggestions.filter((item) => input.assignments[`suggestion:${item.type}:${item.name.toLowerCase()}`]).map((item) => ({ ...item, area_id: input.assignments[`suggestion-area:${item.type}:${item.name.toLowerCase()}`] ?? item.area_id ?? null }))
-  const { data, error } = await supabase.rpc("save_capture", { p_idempotency_key: input.idempotency_key, p_raw_note: input.raw_note, p_tasks: tasks, p_ideas: ideas, p_second_brain: secondBrain, p_inbox: [], p_approved_suggestions: approved })
+  const outputSnapshot = { ...input.confirmed_output, assignments: input.assignments }
+  const { data, error } = await supabase.rpc("save_capture", { p_idempotency_key: input.idempotency_key, p_raw_note: input.raw_note, p_tasks: tasks, p_ideas: ideas, p_second_brain: secondBrain, p_inbox: [], p_output_snapshot: outputSnapshot, p_approved_suggestions: approved })
   if (error) throw new Error(error.message)
   return data as SaveCaptureResult
 }
