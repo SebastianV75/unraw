@@ -4,11 +4,21 @@ import Link from "next/link";
 import { use, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { MarkdownEditor } from "@/components/capture/MarkdownEditor";
+import { MarkdownRenderer } from "@/components/capture/MarkdownRenderer";
 import TaskForm from "@/components/tasks/TaskForm";
 import TaskList from "@/components/tasks/TaskList";
 import IdeaForm from "@/components/ideas/IdeaForm";
 import IdeaList from "@/components/ideas/IdeaList";
-import type { Area, Project, Task, ProjectStatus, Idea } from "@/types";
+import BookSaved from "reicon-react/icons/BookSaved";
+import type {
+	Area,
+	Project,
+	Task,
+	ProjectStatus,
+	Idea,
+	SecondBrainEntry,
+} from "@/types";
 import { LoadingButton } from "@/components/interior/loading-button";
 import { SkeletonSwap } from "@/components/interior/skeleton-swap";
 
@@ -23,8 +33,12 @@ export default function AreaPage({
 	const [projects, setProjects] = useState<Project[]>([]);
 	const [tasks, setTasks] = useState<Task[]>([]);
 	const [ideas, setIdeas] = useState<Idea[]>([]);
+	const [knowledge, setKnowledge] = useState<SecondBrainEntry[]>([]);
 	const [projectName, setProjectName] = useState("");
 	const [projectDescription, setProjectDescription] = useState("");
+	const [noteTitle, setNoteTitle] = useState("");
+	const [noteContent, setNoteContent] = useState("");
+	const [noteTags, setNoteTags] = useState("");
 	const [editing, setEditing] = useState(false);
 	const [areaName, setAreaName] = useState("");
 	const [loading, setLoading] = useState(true);
@@ -42,7 +56,7 @@ export default function AreaPage({
 			setLoading(false);
 			return;
 		}
-		const [areaResult, projectResult, taskResult, ideaResult] =
+		const [areaResult, projectResult, taskResult, ideaResult, knowledgeResult] =
 			await Promise.all([
 				supabase
 					.from("areas")
@@ -68,6 +82,12 @@ export default function AreaPage({
 					.eq("area_id", areaId)
 					.eq("user_id", user.id)
 					.order("created_at", { ascending: false }),
+				supabase
+					.from("second_brain")
+					.select("*")
+					.eq("area_id", areaId)
+					.eq("user_id", user.id)
+					.order("created_at", { ascending: false }),
 			]);
 		if (areaResult.error || !areaResult.data)
 			setError("No encontramos esta área o no está disponible.");
@@ -77,8 +97,14 @@ export default function AreaPage({
 			setProjects((projectResult.data ?? []) as Project[]);
 			setTasks((taskResult.data ?? []) as Task[]);
 			setIdeas((ideaResult.data ?? []) as Idea[]);
+			setKnowledge((knowledgeResult.data ?? []) as SecondBrainEntry[]);
 		}
-		if (projectResult.error || taskResult.error || ideaResult.error)
+		if (
+			projectResult.error ||
+			taskResult.error ||
+			ideaResult.error ||
+			knowledgeResult.error
+		)
 			setError("No pudimos cargar parte del contenido del área.");
 		setLoading(false);
 	}, [areaId]);
@@ -106,6 +132,40 @@ export default function AreaPage({
 		else {
 			setArea(data as Area);
 			setEditing(false);
+		}
+		setSaving(false);
+	}
+
+	async function createKnowledge() {
+		if (!area || !noteTitle.trim() || !noteContent.trim()) {
+			setError("El título y el contenido de la nota son necesarios.");
+			return;
+		}
+		setSaving(true);
+		setError("");
+		const tags = noteTags
+			.split(",")
+			.map((tag) => tag.trim())
+			.filter(Boolean)
+			.slice(0, 20);
+		const { data, error: insertError } = await createClient()
+			.from("second_brain")
+			.insert({
+				user_id: area.user_id,
+				area_id: area.id,
+				title: noteTitle.trim(),
+				content: noteContent.trim(),
+				tags,
+			})
+			.select("*")
+			.single();
+		if (insertError || !data)
+			setError("No pudimos guardar la nota. Inténtalo de nuevo.");
+		else {
+			setKnowledge((current) => [data as SecondBrainEntry, ...current]);
+			setNoteTitle("");
+			setNoteContent("");
+			setNoteTags("");
 		}
 		setSaving(false);
 	}
@@ -167,7 +227,7 @@ export default function AreaPage({
 		);
 
 	return (
-		<div className="mx-auto max-w-5xl space-y-8">
+		<div className="app-page app-area-page space-y-8">
 			<div className="flex flex-wrap items-start justify-between gap-4">
 				<div>
 					{editing ? (
@@ -350,6 +410,90 @@ export default function AreaPage({
 						setIdeas((current) => current.filter((idea) => idea.id !== id))
 					}
 				/>
+			</section>
+			<section className="app-area-section app-area-notes-section space-y-4">
+				<div className="app-area-section-heading">
+					<div>
+						<p className="app-section-kicker">Escritura</p>
+						<h2>Nueva nota</h2>
+						<p>Desarrolla una idea sin sacarla del contexto de {area.name}.</p>
+					</div>
+				</div>
+				<form
+					className="knowledge-note-editor"
+					onSubmit={(event) => {
+						event.preventDefault();
+						void createKnowledge();
+					}}
+				>
+					<input
+						className="knowledge-note-title"
+						placeholder="Título de la nota"
+						value={noteTitle}
+						onChange={(event) => setNoteTitle(event.target.value)}
+						maxLength={200}
+						aria-label="Título de la nota"
+					/>
+					<MarkdownEditor
+						value={noteContent}
+						onChangeAction={setNoteContent}
+						maxLength={10000}
+						variant="document"
+						livePreview
+					/>
+					<div className="knowledge-note-footer">
+						<input
+							className="knowledge-note-tags"
+							placeholder="Etiquetas opcionales"
+							value={noteTags}
+							onChange={(event) => setNoteTags(event.target.value)}
+							maxLength={500}
+							aria-label="Etiquetas de la nota"
+						/>
+						<LoadingButton
+							className="btn btn-primary"
+							onAction={createKnowledge}
+							pendingLabel="Guardando…"
+							disabled={saving || !noteTitle.trim() || !noteContent.trim()}
+						>
+							Guardar nota
+						</LoadingButton>
+					</div>
+				</form>
+			</section>
+			<section className="app-area-section space-y-4">
+				<div className="app-area-section-heading">
+					<div>
+						<p className="app-section-kicker">Conocimiento</p>
+						<h2>Lo que quieres conservar</h2>
+						<p>Notas y aprendizajes conectados con esta área.</p>
+					</div>
+					<BookSaved
+						size={20}
+						color="currentColor"
+						weight="Outline"
+						aria-hidden="true"
+					/>
+				</div>
+				{knowledge.length === 0 ? (
+					<p className="app-empty-state">
+						Aún no hay conocimiento en esta área.
+					</p>
+				) : (
+					<div className="app-knowledge-list">
+						{knowledge.slice(0, 4).map((entry) => (
+							<article className="app-knowledge-item" key={entry.id}>
+								<h3>{entry.title}</h3>
+								<div className="markdown-content">
+									<MarkdownRenderer content={entry.content} />
+								</div>
+							</article>
+						))}
+					</div>
+				)}
+				<Link className="app-text-link" href="/second-brain">
+					Ver todo el conocimiento
+				</Link>
 			</section>
 		</div>
 	);

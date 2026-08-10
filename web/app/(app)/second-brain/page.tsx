@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { MarkdownEditor } from "@/components/capture/MarkdownEditor";
+import { MarkdownRenderer } from "@/components/capture/MarkdownRenderer";
 import { LoadingButton } from "@/components/interior/loading-button";
 import { SkeletonSwap } from "@/components/interior/skeleton-swap";
 import type { Area, SecondBrainEntry } from "@/types";
@@ -51,8 +53,8 @@ export default function SecondBrainPage() {
 	async function createEntry() {
 		const cleanTitle = title.trim();
 		const cleanContent = content.trim();
-		if (!cleanTitle || !cleanContent || !areaId) {
-			setError("El título, el contenido y el área son necesarios.");
+		if (!cleanTitle || !cleanContent) {
+			setError("El título y el contenido son necesarios.");
 			return;
 		}
 		setSaving(true);
@@ -153,7 +155,7 @@ export default function SecondBrainPage() {
 	const areaNames = new Map(areas.map((area) => [area.id, area.name]));
 
 	return (
-		<div className="mx-auto max-w-5xl space-y-8">
+		<div className="app-page second-brain-page space-y-8">
 			<header>
 				<p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">
 					Conocimiento guardado
@@ -164,7 +166,7 @@ export default function SecondBrainPage() {
 				</p>
 			</header>
 			<form
-				className="space-y-3 rounded-box border border-base-300 bg-base-100 p-5"
+				className="knowledge-note-editor space-y-3"
 				onSubmit={(event) => {
 					event.preventDefault();
 					void createEntry();
@@ -172,7 +174,7 @@ export default function SecondBrainPage() {
 			>
 				<div className="grid gap-3 md:grid-cols-2">
 					<input
-						className="input input-bordered"
+						className="knowledge-note-title"
 						placeholder="Título"
 						value={title}
 						onChange={(event) => setTitle(event.target.value)}
@@ -184,7 +186,7 @@ export default function SecondBrainPage() {
 						onChange={(event) => setAreaId(event.target.value)}
 						aria-label="Area"
 					>
-						<option value="">Elegir un área</option>
+						<option value="">Conocimiento global</option>
 						{areas.map((area) => (
 							<option key={area.id} value={area.id}>
 								{area.name}
@@ -192,15 +194,16 @@ export default function SecondBrainPage() {
 						))}
 					</select>
 				</div>
-				<textarea
-					className="textarea textarea-bordered min-h-32 w-full"
-					placeholder="Contenido"
+				<MarkdownEditor
 					value={content}
-					onChange={(event) => setContent(event.target.value)}
+					onChangeAction={setContent}
 					maxLength={10000}
+					variant="document"
+					livePreview
+					autoFocus
 				/>
 				<input
-					className="input input-bordered w-full"
+					className="knowledge-note-tags"
 					placeholder="Etiquetas, separadas por comas (opcional)"
 					value={tags}
 					onChange={(event) => setTags(event.target.value)}
@@ -215,7 +218,7 @@ export default function SecondBrainPage() {
 					className="btn btn-primary"
 					onAction={createEntry}
 					pendingLabel="Guardando…"
-					disabled={saving || areas.length === 0}
+					disabled={saving}
 				>
 					Guardar conocimiento
 				</LoadingButton>
@@ -264,16 +267,17 @@ export default function SecondBrainPage() {
 												maxLength={200}
 												aria-label="Título de la entrada"
 											/>
-											<textarea
-												className="textarea textarea-bordered min-h-32 w-full"
+											<MarkdownEditor
 												value={draft.content}
-												onChange={(event) =>
+												onChangeAction={(value) =>
 													setDraft((current) => ({
 														...current,
-														content: event.target.value,
+														content: value,
 													}))
 												}
 												maxLength={10000}
+												variant="document"
+												livePreview
 											/>
 											<input
 												className="input input-bordered w-full"
@@ -313,12 +317,19 @@ export default function SecondBrainPage() {
 													<h2 className="text-xl font-semibold">
 														{entry.title}
 													</h2>
-													<Link
-														className="mt-1 inline-block text-sm text-primary"
-														href={`/areas/${entry.area_id}`}
-													>
-														{areaNames.get(entry.area_id) ?? "Área desconocida"}
-													</Link>
+													{entry.area_id ? (
+														<Link
+															className="mt-1 inline-block text-sm text-primary"
+															href={`/areas/${entry.area_id}`}
+														>
+															{areaNames.get(entry.area_id) ??
+																"Área desconocida"}
+														</Link>
+													) : (
+														<span className="mt-1 inline-block text-sm text-base-content/60">
+															Conocimiento global
+														</span>
+													)}
 												</div>
 												<div className="flex gap-2">
 													<button
@@ -338,7 +349,7 @@ export default function SecondBrainPage() {
 												</div>
 											</div>
 											<div className="markdown-content mt-4">
-												<p className="whitespace-pre-wrap">{entry.content}</p>
+												<MarkdownRenderer content={entry.content} />
 											</div>
 											{entry.tags.length > 0 && (
 												<div className="mt-3 flex flex-wrap gap-2">
