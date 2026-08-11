@@ -3206,9 +3206,18 @@ transform 120ms cubic-bezier(0.23, 1, 0.32, 1);
   grid-column: 2;
 }
 
+.landing-v2-faq {
+  align-items: start;
+}
+
+.landing-v2-faq .landing-v2-section-intro {
+  display: block;
+  min-width: 0;
+}
+
 .landing-v2-faq-list {
   max-width: 860px;
-  margin: 64px 0 0 auto;
+  margin: 0 0 0 auto;
 }
 
 .landing-v2-faq-accordion {

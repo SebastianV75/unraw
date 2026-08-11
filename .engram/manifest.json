@@ -40,6 +40,14 @@
       "sessions": 0,
       "memories": 15,
       "prompts": 14
+    },
+    {
+      "id": "c8cd2602",
+      "created_by": "sebas",
+      "created_at": "2026-08-11T00:02:25Z",
+      "sessions": 1,
+      "memories": 3,
+      "prompts": 3
     }
   ]
 }
