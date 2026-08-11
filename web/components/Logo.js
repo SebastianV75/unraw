@@ -1,6 +1,6 @@
 const logoSources = {
 	mark: "/brand/unraw-mark.png",
-	appMark: "/brand/unraw-favicon.png",
+	appMark: "/brand/unraw-app-icon.png",
 	wordmark: "/brand/unraw-wordmark.png",
 };
 

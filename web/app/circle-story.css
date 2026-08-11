@@ -18,7 +18,7 @@
 .landing-circle-hero-label {
 	position: absolute;
 	z-index: 3;
-	top: clamp(42px, 7vh, 76px);
+	top: clamp(28px, 5vh, 56px);
 	left: 50%;
 	color: var(--text-secondary);
 	transform: translateX(-50%);
@@ -146,6 +146,21 @@
 	flex: 0 0 auto;
 	font-size: 13px;
 	font-weight: 600;
+}
+
+/* Keep the headline inside the orb on laptop-sized viewports. */
+@media (min-width: 901px) and (max-width: 1800px) {
+	.landing-circle-hero-orb-shell {
+		width: min(46vw, 640px);
+	}
+
+	.landing-circle-hero-copy {
+		width: min(84vw, 620px);
+	}
+
+	.landing-circle-hero-copy h1 {
+		font-size: clamp(52px, 5vw, 70px);
+	}
 }
 
 .landing-circle-story {

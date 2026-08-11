@@ -31,7 +31,13 @@ export const metadata: Metadata = {
 		type: "website",
 		locale: "es_MX",
 	},
-	icons: { icon: "/brand/unraw-favicon.png" },
+	icons: {
+		icon: {
+			url: "/brand/unraw-app-icon.png",
+			type: "image/png",
+			sizes: "512x512",
+		},
+	},
 };
 
 export const viewport: Viewport = {

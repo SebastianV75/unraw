@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { getSafeNextPath } from "@/lib/utils";
 import { InlineValidation } from "@/components/interior/inline-validation";
 import { LoadingButton } from "@/components/interior/loading-button";
+import GoogleButton from "@/components/auth/GoogleButton";
 
 function LoginForm() {
 	const searchParams = useSearchParams();
@@ -91,6 +92,12 @@ function LoginForm() {
 						Iniciar sesión
 					</LoadingButton>
 				</form>
+				<div className="my-5 flex items-center gap-3 text-xs text-base-content/50">
+					<span className="h-px flex-1 bg-base-300" />
+					<span>o continúa con</span>
+					<span className="h-px flex-1 bg-base-300" />
+				</div>
+				<GoogleButton next={getSafeNextPath(searchParams.get("next"))} />
 				<p className="mt-6 text-center text-sm text-base-content/70">
 					¿Aún no tienes cuenta?{" "}
 					<Link
