@@ -18,6 +18,7 @@ type NoteBlock = {
 	id: string;
 	type: BlockType;
 	text: string;
+	checked?: boolean;
 };
 
 type SlashCommand = {
@@ -45,9 +46,13 @@ const commands: SlashCommand[] = [
 
 let nextId = 0;
 
-function createBlock(type: BlockType = "paragraph", text = ""): NoteBlock {
+function createBlock(
+	type: BlockType = "paragraph",
+	text = "",
+	checked = false,
+): NoteBlock {
 	nextId += 1;
-	return { id: `block-${Date.now()}-${nextId}`, type, text };
+	return { id: `block-${Date.now()}-${nextId}`, type, text, checked };
 }
 
 function parseMarkdown(markdown: string): NoteBlock[] {
@@ -83,10 +88,12 @@ function parseMarkdown(markdown: string): NoteBlock[] {
 		} else if (/^#\s+/.test(line)) {
 			blocks.push(createBlock("heading1", line.replace(/^#\s+/, "")));
 		} else if (/^- \[[ xX]\]\s+/.test(line) || /^\[\]\s+/.test(line)) {
+			const checklist = line.match(/^- \[([ xX])\]\s+(.+)$/);
 			blocks.push(
 				createBlock(
 					"checklist",
-					line.replace(/^- \[[ xX]\]\s+/, "").replace(/^\[\]\s+/, ""),
+					checklist?.[2] ?? line.replace(/^\[\]\s+/, ""),
+					checklist?.[1].toLowerCase() === "x",
 				),
 			);
 		} else if (/^\d+\.\s+/.test(line)) {
@@ -104,8 +111,14 @@ function parseMarkdown(markdown: string): NoteBlock[] {
 }
 
 function serializeMarkdown(blocks: NoteBlock[]) {
+	let numberedIndex = 0;
 	return blocks
 		.map((block) => {
+			if (block.type !== "numbered-list") numberedIndex = 0;
+			if (block.type === "numbered-list") {
+				numberedIndex += 1;
+				return `${numberedIndex}. ${block.text}`;
+			}
 			switch (block.type) {
 				case "heading1":
 					return `# ${block.text}`;
@@ -115,10 +128,8 @@ function serializeMarkdown(blocks: NoteBlock[]) {
 					return `### ${block.text}`;
 				case "bulleted-list":
 					return `- ${block.text}`;
-				case "numbered-list":
-					return `1. ${block.text}`;
 				case "checklist":
-					return `- [ ] ${block.text}`;
+					return `- [${block.checked ? "x" : " "}] ${block.text}`;
 				case "quote":
 					return `> ${block.text}`;
 				case "code":
@@ -132,7 +143,15 @@ function serializeMarkdown(blocks: NoteBlock[]) {
 		.join("\n");
 }
 
-function blockPrefix(type: BlockType) {
+function blockPrefix(type: BlockType, index: number, blocks: NoteBlock[]) {
+	if (type === "numbered-list") {
+		let number = 1;
+		for (let previous = index - 1; previous >= 0; previous -= 1) {
+			if (blocks[previous].type !== "numbered-list") break;
+			number += 1;
+		}
+		return `${number}.`;
+	}
 	switch (type) {
 		case "heading1":
 			return "H1";
@@ -142,8 +161,6 @@ function blockPrefix(type: BlockType) {
 			return "H3";
 		case "bulleted-list":
 			return "•";
-		case "numbered-list":
-			return "1.";
 		case "checklist":
 			return "□";
 		case "quote":
@@ -216,32 +233,53 @@ export function BlockNoteEditor({
 	function updateBlock(id: string, rawText: string) {
 		let text = rawText;
 		let type: BlockType | undefined;
+		let checked: boolean | undefined;
+		let removedPrefixLength = 0;
 		if (/^###\s/.test(text)) {
 			type = "heading3";
-			text = text.replace(/^###\s/, "");
+			removedPrefixLength = 4;
+			text = text.slice(4);
 		} else if (/^##\s/.test(text)) {
 			type = "heading2";
-			text = text.replace(/^##\s/, "");
+			removedPrefixLength = 3;
+			text = text.slice(3);
 		} else if (/^#\s/.test(text)) {
 			type = "heading1";
-			text = text.replace(/^#\s/, "");
+			removedPrefixLength = 2;
+			text = text.slice(2);
 		} else if (/^- \[[ xX]\]\s/.test(text) || /^\[\]\s/.test(text)) {
 			type = "checklist";
-			text = text.replace(/^- \[[ xX]\]\s/, "").replace(/^\[\]\s/, "");
+			const checklistPrefix = text.match(/^- \[[ xX]\]\s|^\[\]\s/)?.[0] ?? "";
+			removedPrefixLength = checklistPrefix.length;
+			checked = /^- \[[xX]\]\s/.test(text);
+			text = text.slice(removedPrefixLength);
 		} else if (/^\d+\.\s/.test(text)) {
 			type = "numbered-list";
-			text = text.replace(/^\d+\.\s/, "");
+			removedPrefixLength = text.match(/^\d+\.\s/)?.[0].length ?? 0;
+			text = text.slice(removedPrefixLength);
 		} else if (/^[-*+]\s/.test(text)) {
 			type = "bulleted-list";
-			text = text.replace(/^[-*+]\s/, "");
+			removedPrefixLength = 2;
+			text = text.slice(2);
 		} else if (/^(>|\")\s?/.test(text)) {
 			type = "quote";
-			text = text.replace(/^(>|\")\s?/, "");
+			removedPrefixLength = text.match(/^(>|\")\s?/)?.[0].length ?? 0;
+			text = text.slice(removedPrefixLength);
 		}
 		const next = blocks.map((block) =>
-			block.id === id ? { ...block, text, type: type ?? block.type } : block,
+			block.id === id
+				? {
+						...block,
+						text,
+						type: type ?? block.type,
+						checked: type === "checklist" ? checked : block.checked,
+					}
+				: block,
 		);
 		commit(next);
+		if (removedPrefixLength > 0) {
+			focusBlock(id, Math.max(0, rawText.length - removedPrefixLength));
+		}
 		const match = rawText.match(/(^|\s)\/([^\s]*)$/);
 		setSlash(match ? { id, query: match[2] } : null);
 		setSlashIndex(0);
@@ -282,37 +320,73 @@ export function BlockNoteEditor({
 		event: React.KeyboardEvent<HTMLTextAreaElement>,
 		block: NoteBlock,
 	) {
+		const modifier = event.metaKey || event.ctrlKey;
+		if (modifier && event.key.toLowerCase() === "d") {
+			event.preventDefault();
+			duplicateBlock(block.id);
+			return;
+		}
+		if (modifier && event.key === "/") {
+			event.preventDefault();
+			setSlash({ id: block.id, query: "" });
+			setSlashIndex(0);
+			return;
+		}
+		if (modifier && event.shiftKey && event.key === "ArrowUp") {
+			event.preventDefault();
+			moveByOffset(block.id, -1);
+			return;
+		}
+		if (modifier && event.shiftKey && event.key === "ArrowDown") {
+			event.preventDefault();
+			moveByOffset(block.id, 1);
+			return;
+		}
+		if (event.key === "Escape") {
+			event.preventDefault();
+			setSelectedId(block.id);
+			setSlash(null);
+			return;
+		}
 		if (slash && filteredCommands.length > 0) {
-			if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+			if (event.key === "ArrowDown") {
 				event.preventDefault();
+				setSlashIndex((current) => (current + 1) % filteredCommands.length);
+				return;
+			}
+			if (event.key === "ArrowUp") {
+				event.preventDefault();
+				setSlashIndex(
+					(current) =>
+						(current - 1 + filteredCommands.length) % filteredCommands.length,
+				);
 				return;
 			}
 			if (event.key === "Enter") {
 				event.preventDefault();
-				applyCommand(filteredCommands[0]);
-				return;
-			}
-			if (event.key === "Escape") {
-				event.preventDefault();
-				setSlash(null);
+				applyCommand(filteredCommands[slashIndex] ?? filteredCommands[0]);
 				return;
 			}
 		}
 		if (event.key === "Enter" && !event.shiftKey && block.type !== "code") {
 			event.preventDefault();
 			const textarea = event.currentTarget;
+			const currentText = textarea.value;
 			const start = textarea.selectionStart;
-			const before = block.text.slice(0, start);
-			const after = block.text.slice(textarea.selectionEnd);
+			const before = currentText.slice(0, start);
+			const after = currentText.slice(textarea.selectionEnd);
 			const continuesList = [
 				"bulleted-list",
 				"numbered-list",
 				"checklist",
 				"quote",
 			].includes(block.type);
+			const currentType = continuesList && !before ? "paragraph" : block.type;
 			const nextType = continuesList && before ? block.type : "paragraph";
 			const replacement = blocks.map((item) =>
-				item.id === block.id ? { ...item, type: nextType, text: before } : item,
+				item.id === block.id
+					? { ...item, type: currentType, text: before }
+					: item,
 			);
 			const index = replacement.findIndex((item) => item.id === block.id);
 			const newBlock = createBlock(nextType, after);
@@ -326,6 +400,19 @@ export function BlockNoteEditor({
 			const index = blocks.findIndex((item) => item.id === block.id);
 			if (index === 0) return;
 			const previous = blocks[index - 1];
+			if (
+				!block.text &&
+				["bulleted-list", "numbered-list", "checklist"].includes(block.type)
+			) {
+				const next = blocks.map((item) =>
+					item.id === block.id
+						? { ...item, type: "paragraph" as const, checked: false }
+						: item,
+				);
+				commit(next);
+				focusBlock(block.id);
+				return;
+			}
 			if (!block.text) {
 				const next = blocks.filter((item) => item.id !== block.id);
 				commit(next);
@@ -346,11 +433,22 @@ export function BlockNoteEditor({
 	function duplicateBlock(id: string) {
 		const index = blocks.findIndex((block) => block.id === id);
 		if (index < 0) return;
-		const duplicate = createBlock(blocks[index].type, blocks[index].text);
+		const duplicate = createBlock(
+			blocks[index].type,
+			blocks[index].text,
+			blocks[index].checked,
+		);
 		const next = [...blocks];
 		next.splice(index + 1, 0, duplicate);
 		commit(next);
 		focusBlock(duplicate.id);
+	}
+
+	function toggleChecklist(id: string) {
+		const next = blocks.map((block) =>
+			block.id === id ? { ...block, checked: !block.checked } : block,
+		);
+		commit(next);
 	}
 
 	function moveByOffset(id: string, offset: number) {
@@ -380,10 +478,14 @@ export function BlockNoteEditor({
 		<div className="block-note-editor">
 			{blocks.map((block, index) => (
 				<div
-					className={`block-note-row is-${block.type}`}
+					className={`block-note-row is-${block.type} ${selectedId === block.id ? "is-selected" : ""}`}
 					key={block.id}
 					draggable
-					onDragStart={() => setDraggedId(block.id)}
+					onClick={() => setSelectedId(block.id)}
+					onDragStart={() => {
+						setSelectedId(block.id);
+						setDraggedId(block.id);
+					}}
 					onDragOver={(event) => event.preventDefault()}
 					onDrop={() => moveBlock(block.id)}
 				>
@@ -406,9 +508,19 @@ export function BlockNoteEditor({
 						<hr className="block-note-divider" />
 					) : (
 						<div className="block-note-content">
-							<span className="block-note-prefix" aria-hidden="true">
-								{blockPrefix(block.type)}
-							</span>
+							{block.type === "checklist" ? (
+								<input
+									className="block-note-checkbox"
+									type="checkbox"
+									checked={Boolean(block.checked)}
+									onChange={() => toggleChecklist(block.id)}
+									aria-label={`Marcar bloque ${index + 1}`}
+								/>
+							) : (
+								<span className="block-note-prefix" aria-hidden="true">
+									{blockPrefix(block.type, index, blocks)}
+								</span>
+							)}
 							<textarea
 								ref={(node) => {
 									if (node) refs.current.set(block.id, node);
@@ -420,6 +532,7 @@ export function BlockNoteEditor({
 								rows={block.type === "code" ? 3 : 1}
 								placeholder={index === 0 ? "Empieza a escribir…" : ""}
 								onChange={(event) => updateBlock(block.id, event.target.value)}
+								onFocus={() => setSelectedId(block.id)}
 								onKeyDown={(event) => handleKeyDown(event, block)}
 								aria-label={`${block.type} bloque ${index + 1}`}
 							/>

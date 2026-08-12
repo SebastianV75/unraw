@@ -4802,7 +4802,8 @@ padding: 20px 20px 8px;
           transition: opacity 150ms ease-out;
         }
         .block-note-row:hover .block-note-gutter,
-        .block-note-row:focus-within .block-note-gutter {
+        .block-note-row:focus-within .block-note-gutter,
+        .block-note-row.is-selected .block-note-gutter {
           opacity: 1;
         }
         .block-note-plus,
@@ -4836,50 +4837,61 @@ padding: 20px 20px 8px;
           align-items: flex-start;
         }
         .block-note-prefix {
-          width: 32px;
-          flex: 0 0 32px;
-          padding-top: 8px;
-          color: var(--text-muted);
+          display: grid;
+          width: 42px;
+          flex: 0 0 42px;
+          place-items: center;
+          padding-top: 6px;
+          color: var(--text-secondary);
           font-family: var(--font-mono, ui-monospace, monospace);
-          font-size: 11px;
+          font-size: 17px;
+          font-weight: 600;
+          line-height: 1;
           text-align: center;
+        }
+        .block-note-checkbox {
+          width: 20px;
+          height: 20px;
+          flex: 0 0 20px;
+          margin: 7px 22px 0 10px;
+          accent-color: var(--accent);
         }
         .block-note-input {
           display: block;
           width: 100%;
-          min-height: 34px;
+          min-height: 36px;
           resize: none;
           border: 0;
           background: transparent;
-          padding: 5px 0;
+          padding: 4px 0;
           color: var(--text-primary);
           font-family: var(--font-geist), ui-sans-serif, sans-serif;
-          font-size: 18px;
-          line-height: 1.55;
+          font-size: 20px;
+          line-height: 1.6;
           outline: none;
         }
         .block-note-input::placeholder {
           color: var(--text-muted);
         }
         .block-note-row.is-heading1 .block-note-input {
-          padding-top: 12px;
-          font-size: 40px;
+          padding-top: 10px;
+          font-size: 48px;
           font-weight: 600;
-          letter-spacing: -0.06em;
+          letter-spacing: -0.065em;
           line-height: 1.08;
         }
         .block-note-row.is-heading2 .block-note-input {
-          padding-top: 10px;
-          font-size: 30px;
+          padding-top: 9px;
+          font-size: 36px;
           font-weight: 600;
-          letter-spacing: -0.05em;
+          letter-spacing: -0.055em;
           line-height: 1.15;
         }
         .block-note-row.is-heading3 .block-note-input {
           padding-top: 8px;
-          font-size: 23px;
+          font-size: 28px;
           font-weight: 600;
-          letter-spacing: -0.04em;
+          letter-spacing: -0.045em;
           line-height: 1.2;
         }
         .block-note-row.is-quote {
@@ -4898,9 +4910,17 @@ padding: 20px 20px 8px;
         .block-note-row.is-code .block-note-prefix {
           padding-top: 8px;
         }
+        .block-note-row.is-bulleted-list .block-note-prefix {
+          color: var(--accent);
+          font-size: 28px;
+        }
+        .block-note-row.is-numbered-list .block-note-prefix {
+          color: var(--accent);
+          font-size: 15px;
+        }
         .block-note-row.is-code .block-note-input {
           font-family: var(--font-mono, ui-monospace, monospace);
-          font-size: 14px;
+          font-size: 15px;
           line-height: 1.65;
         }
         .block-note-row.is-divider {
@@ -4984,6 +5004,30 @@ padding: 20px 20px 8px;
           .note-page .markdown-document-textarea,
           .note-page .markdown-document-preview {
             min-height: 360px;
+          }
+          .block-note-prefix {
+            width: 30px;
+            flex-basis: 30px;
+            font-size: 15px;
+          }
+          .block-note-checkbox {
+            width: 18px;
+            height: 18px;
+            flex-basis: 18px;
+            margin-left: 4px;
+            margin-right: 12px;
+          }
+          .block-note-input {
+            font-size: 17px;
+          }
+          .block-note-row.is-heading1 .block-note-input {
+            font-size: 36px;
+          }
+          .block-note-row.is-heading2 .block-note-input {
+            font-size: 29px;
+          }
+          .block-note-row.is-heading3 .block-note-input {
+            font-size: 24px;
           }
         }
 
