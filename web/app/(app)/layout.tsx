@@ -7,6 +7,7 @@ import BookSaved from "reicon-react/icons/BookSaved";
 import ChevronRight from "reicon-react/icons/ChevronRight";
 import Grid2 from "reicon-react/icons/Grid2";
 import Inbox from "reicon-react/icons/Inbox";
+import Search from "reicon-react/icons/Search";
 import DocAdd from "reicon-react/icons/DocAdd";
 import Layer from "reicon-react/icons/Layer";
 import Logout6 from "reicon-react/icons/Logout6";
@@ -24,6 +25,7 @@ const navigation = [
   { label: "Captura", href: "/capture", icon: DocAdd },
   { label: "Inbox", href: "/inbox", icon: Inbox },
   { label: "Hoy", href: "/overview", icon: Grid2 },
+  { label: "Buscar", href: "/search", icon: Search },
   { label: "Áreas", href: "/areas", icon: Layer },
   { label: "Conocimiento", href: "/second-brain", icon: BookSaved },
   { label: "Configuración", href: "/settings", icon: Settings2 },

@@ -1,9 +1,9 @@
 # Plan de implementación: búsqueda unificada
 
-Estado: listo para implementación  
+Estado: Fases 1–4 implementadas; tests, typecheck y build de `web` pasan; verificación visual autenticada pendiente por falta de variables Supabase/auth en este entorno
 Alcance: primera versión textual de la búsqueda global de Unraw  
 Ruta prevista: `/search`  
-Última actualización: 2026-08-14
+Última actualización: 2026-08-16
 
 Este documento es la fuente de verdad para implementar la búsqueda unificada. Describe el producto aprobado, el contrato técnico, los estados de interfaz, las tareas, las pruebas y los límites de la primera versión. El equipo que implemente este cambio no debe tener que reconstruir decisiones desde conversaciones anteriores.
 
@@ -303,7 +303,7 @@ No se debe consultar cada tabla directamente desde `CommandPalette`. La palette 
 
 ### 6.2 Endpoint recomendado
 
-Crear `web/app/api/search/route.ts` con `GET`:
+La ruta `web/app/api/search/route.ts` expone `GET`:
 
 ```text
 GET /api/search?q=<consulta>&mode=compact|all
@@ -316,7 +316,8 @@ Reglas:
 - `mode=all` devuelve todos los resultados coincidentes para el scroll expandido;
 - la consulta no se agrega a la URL visible de `/search`;
 - el endpoint sí puede recibirla como parámetro interno de la petición;
-- input vacío debe responder con un estado válido sin consultar tablas;
+- `q` vacío o ausente devuelve `400`; el endpoint no consulta tablas para input inválido;
+- el cliente no realiza solicitudes mientras la búsqueda está en estado `idle`, sin consulta;
 - limitar la longitud de `q` a 200 caracteres;
 - devolver `400` para input inválido;
 - devolver `401` si no existe usuario autenticado;
@@ -353,7 +354,7 @@ Reglas del contrato:
 - `score` puede quedarse fuera de la UI, pero debe existir internamente para ordenar;
 - `snippet` debe estar ya limitado a dos líneas o su equivalente de longitud;
 - el renderer debe tratar todo contenido como texto, nunca como HTML confiable;
-- `highlightRanges` o una estrategia equivalente debe evitar interpolar HTML sin sanitizar;
+- `highlightRanges` se calculará en el route handler usando texto/rangos, sin interpolar HTML sin sanitizar;
 - `href` debe ser generado server-side a partir de IDs validados y rutas conocidas;
 - para una idea, `dueDate` es `null`;
 - para conocimiento global, `context` debe ser `Conocimiento global`;
@@ -441,7 +442,7 @@ Entregables:
 
 Salida verificable: ambas superficies usan el mismo contrato y no duplican lógica de consulta.
 
-### Fase 3 — Command Palette
+### Fase 3 — Command Palette (implementada)
 
 Entregables:
 
@@ -455,7 +456,7 @@ Entregables:
 
 Salida verificable: el usuario puede abrir, buscar, navegar y abrir un resultado sin usar el mouse.
 
-### Fase 4 — Página `/search` y navegación
+### Fase 4 — Página `/search` y navegación (implementada)
 
 Entregables:
 
@@ -470,7 +471,7 @@ Entregables:
 
 Salida verificable: la página funciona directamente y mantiene el mismo contrato de búsqueda que la palette.
 
-### Fase 5 — Verificación y documentación de entrega
+### Fase 5 — Verificación y documentación de entrega (parcial)
 
 Entregables:
 
@@ -621,4 +622,4 @@ La búsqueda unificada se considera terminada cuando:
 
 ## 15. Siguiente acción
 
-Comenzar por la **Fase 0**: crear los tipos, helpers y contrato de respuesta. Después implementar la migración/RPC de la **Fase 1** antes de tocar la UI.
+La **Fase 0** está completada, la Fase 1 SQL está desplegada y validada en Cloud mediante las migraciones `006`–`011`, la route API está creada y las Fases 2–4 de cliente/UI están implementadas. Tests, typecheck y build de `web` pasan; queda pendiente el smoke visual autenticado y cualquier ajuste menor de interacción que dependa de variables Supabase/auth disponibles.

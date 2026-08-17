@@ -145,3 +145,14 @@ export type SecondBrainEntry = {
 	created_at: string;
 	updated_at: string;
 };
+export type {
+	SearchHighlightRange,
+	SearchKind,
+	SearchMatchInput,
+	SearchMode,
+	SearchRequest,
+	SearchResponse,
+	SearchResult,
+	SearchSnippet,
+	ParsedSearchQuery,
+} from "@/lib/search/types";

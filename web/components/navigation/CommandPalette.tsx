@@ -3,57 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import ArrowDown2 from "reicon-react/icons/ArrowDown2";
-import ArrowRight from "reicon-react/icons/ArrowRight";
 import ArrowRight4 from "reicon-react/icons/ArrowRight4";
 import Search from "reicon-react/icons/Search";
 import X from "reicon-react/icons/X";
+import { SearchResults } from "@/components/navigation/SearchResults";
+import { useUnifiedSearch } from "@/components/navigation/useUnifiedSearch";
+import type { SearchMode } from "@/lib/search/types";
 import { useRouter } from "next/navigation";
-
-type CommandItem = {
-	label: string;
-	description: string;
-	href: string;
-	keywords: string;
-};
-
-const commands: CommandItem[] = [
-	{
-		label: "Capturar",
-		description: "Escribe una idea nueva",
-		href: "/capture",
-		keywords: "bandeja nota markdown captura",
-	},
-	{
-		label: "Hoy",
-			description: "Mira lo que requiere atención",
-		href: "/overview",
-		keywords: "tareas hoy tablero resumen",
-	},
-	{
-		label: "Inbox",
-		description: "Revisa capturas sin destino",
-		href: "/inbox",
-		keywords: "bandeja sin hogar sin destino",
-	},
-	{
-		label: "Áreas y proyectos",
-		description: "Explora tu sistema",
-		href: "/areas",
-		keywords: "áreas proyectos trabajo",
-	},
-	{
-		label: "Conocimiento",
-		description: "Explora conocimiento guardado",
-		href: "/second-brain",
-		keywords: "notas conocimiento ideas",
-	},
-	{
-		label: "Configuración",
-		description: "Administra tus preferencias",
-		href: "/settings",
-		keywords: "cuenta preferencias ajustes",
-	},
-];
+const RESULTS_LIST_ID = "command-search-results";
 
 export function CommandPalette() {
 	const router = useRouter();
@@ -62,27 +19,23 @@ export function CommandPalette() {
 	const [open, setOpen] = useState(false);
 	const [query, setQuery] = useState("");
 	const [activeIndex, setActiveIndex] = useState(0);
-
-	const filteredCommands = commands.filter((command) =>
-		`${command.label} ${command.description} ${command.keywords}`
-			.toLowerCase()
-			.includes(query.toLowerCase()),
-	);
+	const [mode, setMode] = useState<SearchMode>("compact");
+	const { state, results, error } = useUnifiedSearch(query, mode);
+	const hasQuery = query.trim().length > 0;
+	const busy = state === "loading" || state === "refreshing";
 
 	function close() {
 		setOpen(false);
 		setQuery("");
+		setMode("compact");
+		setActiveIndex(0);
 		window.requestAnimationFrame(() => launcherRef.current?.focus());
-	}
-
-	function navigate(href: string) {
-		close();
-		router.push(href);
 	}
 
 	function openPalette() {
 		setOpen(true);
 		setActiveIndex(0);
+		window.requestAnimationFrame(() => inputRef.current?.focus());
 	}
 
 	useEffect(() => {
@@ -99,26 +52,29 @@ export function CommandPalette() {
 	}, [open]);
 
 	useEffect(() => {
-		if (open) {
-			window.requestAnimationFrame(() => inputRef.current?.focus());
-		}
+		if (!open) return;
+		window.requestAnimationFrame(() => inputRef.current?.focus());
 	}, [open]);
 
+	useEffect(() => {
+		setActiveIndex((current) => Math.min(current, Math.max(results.length - 1, 0)));
+	}, [results.length]);
+
 	function handleInputKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {
-		if (event.key === "ArrowDown") {
+		if (event.key === "ArrowDown" && results.length > 0) {
 			event.preventDefault();
-			setActiveIndex((current) =>
-				Math.min(current + 1, Math.max(filteredCommands.length - 1, 0)),
-			);
+			setActiveIndex((current) => Math.min(current + 1, results.length - 1));
 		}
-		if (event.key === "ArrowUp") {
+		if (event.key === "ArrowUp" && results.length > 0) {
 			event.preventDefault();
 			setActiveIndex((current) => Math.max(current - 1, 0));
 		}
-		if (event.key === "Enter" && filteredCommands[activeIndex]) {
+		if (event.key === "Enter" && results[activeIndex]) {
 			event.preventDefault();
-			navigate(filteredCommands[activeIndex].href);
+			router.push(results[activeIndex].href);
+			close();
 		}
+		if (event.key === "Escape") close();
 	}
 
 	return (
@@ -155,7 +111,7 @@ export function CommandPalette() {
 						className="command-dialog"
 						role="dialog"
 						aria-modal="true"
-						aria-labelledby="command-title"
+						aria-labelledby="command-search-label"
 					>
 						<div className="command-search-row">
 							<Search
@@ -166,9 +122,12 @@ export function CommandPalette() {
 								strokeWidth={1.7}
 								aria-hidden="true"
 							/>
+							<label className="sr-only" htmlFor="command-search-input" id="command-search-label">
+								Buscar en Unraw
+							</label>
 							<input
 								ref={inputRef}
-								id="command-title"
+								id="command-search-input"
 								type="search"
 								value={query}
 								onChange={(event) => {
@@ -176,8 +135,15 @@ export function CommandPalette() {
 									setActiveIndex(0);
 								}}
 								onKeyDown={handleInputKeyDown}
-								placeholder="Buscar páginas…"
-								aria-label="Buscar páginas"
+								placeholder="Buscar tareas, ideas y notas…"
+								aria-label="Buscar en Unraw"
+								aria-controls={hasQuery ? RESULTS_LIST_ID : undefined}
+								aria-activedescendant={
+									hasQuery && results[activeIndex]
+										? `${RESULTS_LIST_ID}-option-${activeIndex}`
+										: undefined
+								}
+								aria-busy={busy}
 							/>
 							<button
 								className="command-close"
@@ -194,40 +160,61 @@ export function CommandPalette() {
 								/>
 							</button>
 						</div>
-						<div
-							className="command-results"
-							role="listbox"
-							aria-label="Páginas"
-						>
-							{filteredCommands.length > 0 ? (
-								filteredCommands.map((command, index) => (
+
+						{hasQuery && (
+							<>
+								{results.length > 0 ? (
+									<SearchResults
+										results={results}
+										activeIndex={activeIndex}
+										listId={RESULTS_LIST_ID}
+										ariaBusy={busy}
+										onActiveIndexChange={setActiveIndex}
+										onNavigate={close}
+									/>
+								) : state === "empty" ? (
+									<SearchResults
+										results={[]}
+										listId={RESULTS_LIST_ID}
+										ariaBusy={false}
+									/>
+								) : state === "loading" ? (
+									<p className="command-status" role="status" aria-live="polite">
+										Buscando…
+									</p>
+								) : null}
+								{error ? (
+									<p className="command-status command-status-error" role="alert">
+										{error}
+									</p>
+								) : null}
+								{busy && results.length > 0 ? (
+									<p className="command-refreshing" role="status" aria-live="polite">
+										Actualizando…
+									</p>
+								) : null}
+								{mode === "compact" && results.length === 8 ? (
 									<button
-										className={`command-result ${index === activeIndex ? "is-active" : ""}`}
-										key={command.href}
+										className="command-expand"
 										type="button"
-										role="option"
-										aria-selected={index === activeIndex}
-										onMouseEnter={() => setActiveIndex(index)}
-										onClick={() => navigate(command.href)}
+										onClick={() => {
+											setMode("all");
+											setActiveIndex(0);
+										}}
 									>
-										<span>
-											<strong>{command.label}</strong>
-											<small>{command.description}</small>
-										</span>
-										<ArrowRight
-											className="command-result-arrow"
-											size={15}
+										Ver todos
+										<ArrowRight4
+											size={14}
 											color="currentColor"
 											weight="Outline"
 											strokeWidth={1.7}
 											aria-hidden="true"
 										/>
 									</button>
-								))
-							) : (
-								<p className="command-empty">No encontramos páginas.</p>
-							)}
-						</div>
+								) : null}
+							</>
+						)}
+
 						<div className="command-footer">
 							<span>
 								<ArrowDown2
@@ -236,19 +223,9 @@ export function CommandPalette() {
 									weight="Outline"
 									strokeWidth={1.7}
 									aria-hidden="true"
-								/>{" "}
-								Navegar
+								/> {" "}Navegar
 							</span>
-							<span>
-								<ArrowRight4
-									size={12}
-									color="currentColor"
-									weight="Outline"
-									strokeWidth={1.7}
-									aria-hidden="true"
-								/>{" "}
-								Abrir
-							</span>
+							<span>↵ Abrir</span>
 							<span>Esc Cerrar</span>
 						</div>
 					</section>

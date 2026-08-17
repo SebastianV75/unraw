@@ -19,7 +19,6 @@ alter table public.capture_batches enable row level security;
 alter table public.inbox_items enable row level security;
 create policy capture_batches_own on public.capture_batches for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy inbox_items_own on public.inbox_items for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
-
 -- The route supplies reviewed output. This function owns the transaction and locks retries.
 create or replace function public.save_capture(p_idempotency_key text, p_raw_note text, p_tasks jsonb, p_ideas jsonb, p_second_brain jsonb, p_inbox jsonb, p_approved_suggestions jsonb default '[]'::jsonb)
 returns jsonb language plpgsql security invoker set search_path = public as $$
@@ -56,7 +55,6 @@ begin
 end; $$;
 revoke all on function public.save_capture(text,text,jsonb,jsonb,jsonb,jsonb,jsonb) from public;
 grant execute on function public.save_capture(text,text,jsonb,jsonb,jsonb,jsonb,jsonb) to authenticated;
-
 create or replace function public.refund_free_capture()
 returns void language sql security invoker set search_path = public as $$
   update public.profiles set captures_used = greatest(captures_used - 1, 0)
@@ -64,7 +62,6 @@ returns void language sql security invoker set search_path = public as $$
 $$;
 revoke all on function public.refund_free_capture() from public;
 grant execute on function public.refund_free_capture() to authenticated;
-
 create or replace function public.reassign_inbox_item(p_item_id uuid, p_area_id uuid, p_project_id uuid default null)
 returns jsonb language plpgsql security invoker set search_path = public as $$
 declare item public.inbox_items%rowtype; new_id uuid;

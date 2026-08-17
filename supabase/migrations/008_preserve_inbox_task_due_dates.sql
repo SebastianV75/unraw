@@ -1,25 +1,10 @@
--- App redesign foundation: capture history and global knowledge.
--- Tasks and ideas without an area remain active Inbox items.
--- Knowledge without an area is valid global knowledge.
-
-alter table public.second_brain
-  alter column area_id drop not null;
-alter table public.capture_batches
-  add column if not exists output_snapshot jsonb not null default '{}'::jsonb,
-  add column if not exists archived_at timestamptz;
-create index if not exists capture_batches_user_status_created_idx
-  on public.capture_batches(user_id, status, created_at desc);
-create index if not exists second_brain_user_created_at_idx
-  on public.second_brain(user_id, created_at desc);
-comment on column public.capture_batches.output_snapshot is
-  'Reviewed AI output and assignments captured at save time for history.';
-comment on column public.capture_batches.archived_at is
-  'Optional archive timestamp for history management; saved batches remain visible by default.';
-comment on column public.second_brain.area_id is
-  'Optional context area. Null means global knowledge.';
--- PostgREST resolves RPCs by their complete argument list. Remove the old
--- seven-argument function before creating the snapshot-aware replacement.
-drop function if exists public.save_capture(text, text, jsonb, jsonb, jsonb, jsonb, jsonb);
+-- Preserve due dates for tasks that temporarily live in Inbox.
+alter table public.inbox_items
+  add column if not exists due_date date,
+  add column if not exists due_at timestamptz;
+-- PostgREST resolves RPCs by their complete argument list. Replace the current
+-- eight-argument function while retaining its idempotency and validation rules.
+drop function if exists public.save_capture(text, text, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb);
 create function public.save_capture(
   p_idempotency_key text,
   p_raw_note text,
@@ -149,14 +134,29 @@ begin
 
     if area_ref is null then
       insert into public.inbox_items(
-        user_id, batch_id, kind, title, content, raw_note
+        user_id, batch_id, kind, title, content, raw_note, due_date, due_at
       )
       values (
-        auth.uid(), b.id, 'task', row->>'title', row->>'title', p_raw_note
+        auth.uid(),
+        b.id,
+        'task',
+        row->>'title',
+        row->>'title',
+        p_raw_note,
+        nullif(row->>'due_date', '')::date,
+        nullif(row->>'due_at', '')::timestamptz
       );
     else
-      insert into public.tasks(user_id, area_id, project_id, title, status)
-      values (auth.uid(), area_ref, project_ref, row->>'title', 'pending')
+          insert into public.tasks(user_id, area_id, project_id, title, status, due_date, due_at)
+          values (
+            auth.uid(),
+            area_ref,
+            project_ref,
+            row->>'title',
+            'pending',
+            nullif(row->>'due_date', '')::date,
+            nullif(row->>'due_at', '')::timestamptz
+          )
       returning area_id into inserted_area_id;
       affected_area_ids := array_append(affected_area_ids, inserted_area_id);
     end if;
@@ -267,16 +267,19 @@ revoke all on function public.save_capture(
 grant execute on function public.save_capture(
   text, text, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb
 ) to authenticated;
--- RLS limits each row to its owner; table privileges let PostgREST and the
--- security-invoker RPC reach those policies for authenticated users.
-grant select, insert, update, delete on table
-  public.profiles,
-  public.areas,
-  public.projects,
-  public.tasks,
-  public.ideas,
-  public.second_brain,
-  public.capture_batches,
-  public.inbox_items
-  to authenticated;
-grant usage, select on all sequences in schema public to authenticated;
+create or replace function public.reassign_inbox_item(p_item_id uuid, p_area_id uuid, p_project_id uuid default null)
+returns jsonb language plpgsql security invoker set search_path = public as $$
+declare item public.inbox_items%rowtype; new_id uuid;
+begin
+  select * into item from public.inbox_items where id=p_item_id and user_id=auth.uid() and needs_home for update;
+  if item.id is null or not exists(select 1 from public.areas where id=p_area_id and user_id=auth.uid()) or (p_project_id is not null and not exists(select 1 from public.projects where id=p_project_id and area_id=p_area_id and user_id=auth.uid())) then raise exception 'Inbox item, area, or project not found'; end if;
+  if item.kind='task' then
+    insert into public.tasks(user_id,area_id,project_id,title,status,due_date,due_at)
+    values(auth.uid(),p_area_id,p_project_id,coalesce(item.title,item.content),'pending',item.due_date,item.due_at)
+    returning id into new_id;
+  elsif item.kind='idea' then insert into public.ideas(user_id,area_id,content,status) values(auth.uid(),p_area_id,item.content,'new') returning id into new_id;
+  else insert into public.second_brain(user_id,area_id,title,content) values(auth.uid(),p_area_id,coalesce(item.title,'Captured knowledge'),item.content) returning id into new_id; end if;
+  delete from public.inbox_items where id=item.id; return jsonb_build_object('id',new_id,'kind',item.kind);
+end; $$;
+revoke all on function public.reassign_inbox_item(uuid,uuid,uuid) from public;
+grant execute on function public.reassign_inbox_item(uuid,uuid,uuid) to authenticated;

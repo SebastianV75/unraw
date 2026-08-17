@@ -38,6 +38,5 @@ begin
   return query select true, current_profile.captures_used, current_profile.captures_reset_date;
 end;
 $$;
-
 revoke all on function public.consume_free_capture() from public;
 grant execute on function public.consume_free_capture() to authenticated;
