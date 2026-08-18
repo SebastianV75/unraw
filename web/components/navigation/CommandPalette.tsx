@@ -145,6 +145,11 @@ export function CommandPalette() {
 								}
 								aria-busy={busy}
 							/>
+							{busy ? (
+								<span className="search-input-progress" aria-hidden="true">
+									<span className="search-spinner" />
+								</span>
+							) : null}
 							<button
 								className="command-close"
 								type="button"

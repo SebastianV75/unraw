@@ -95,6 +95,11 @@ export default function SearchPage() {
 						}
 						aria-busy={busy}
 					/>
+					{busy ? (
+						<span className="search-input-progress" aria-hidden="true">
+							<span className="search-spinner" />
+						</span>
+					) : null}
 				</div>
 
 				{!hasQuery && !hasCompletedSearch ? (

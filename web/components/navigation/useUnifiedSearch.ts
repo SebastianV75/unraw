@@ -12,6 +12,38 @@ export type UnifiedSearchResult = {
 };
 
 const SEARCH_ERROR = "No pudimos completar la búsqueda.";
+const SEARCH_DEBOUNCE_MS = 250;
+const SEARCH_CACHE_TTL_MS = 30_000;
+const SEARCH_CACHE_LIMIT = 24;
+
+type SearchCacheEntry = {
+	results: SearchResult[];
+	updatedAt: number;
+};
+
+const searchCache = new Map<string, SearchCacheEntry>();
+
+function getCacheKey(query: string, mode: SearchMode) {
+	return `${mode}:${query.toLocaleLowerCase()}`;
+}
+
+function readCache(key: string) {
+	const entry = searchCache.get(key);
+	if (!entry) return null;
+	searchCache.delete(key);
+	searchCache.set(key, entry);
+	return entry;
+}
+
+function writeCache(key: string, results: SearchResult[]) {
+	searchCache.delete(key);
+	searchCache.set(key, { results, updatedAt: Date.now() });
+	while (searchCache.size > SEARCH_CACHE_LIMIT) {
+		const oldestKey = searchCache.keys().next().value;
+		if (!oldestKey) break;
+		searchCache.delete(oldestKey);
+	}
+}
 
 export function useUnifiedSearch(
 	query: string,
@@ -39,8 +71,26 @@ export function useUnifiedSearch(
 			return;
 		}
 
-		setState(resultsRef.current.length > 0 ? "refreshing" : "loading");
+		const cacheKey = getCacheKey(normalizedQuery, mode);
+		const cached = readCache(cacheKey);
+		const cacheIsFresh = cached && Date.now() - cached.updatedAt < SEARCH_CACHE_TTL_MS;
+
+		if (cached) {
+			setResults(cached.results);
+			setState(
+				cacheIsFresh
+					? cached.results.length > 0
+						? "success"
+						: "empty"
+					: cached.results.length > 0
+						? "refreshing"
+						: "loading",
+			);
+		} else {
+			setState(resultsRef.current.length > 0 ? "refreshing" : "loading");
+		}
 		setError(null);
+		if (cacheIsFresh) return;
 
 		const timeout = window.setTimeout(async () => {
 			const controller = new AbortController();
@@ -58,6 +108,7 @@ export function useUnifiedSearch(
 				if (requestId !== requestIdRef.current) return;
 
 				const nextResults = payload.results as SearchResult[];
+				writeCache(cacheKey, nextResults);
 				setResults(nextResults);
 				setState(nextResults.length > 0 ? "success" : "empty");
 				setError(null);
@@ -66,7 +117,7 @@ export function useUnifiedSearch(
 				setState("error");
 				setError(SEARCH_ERROR);
 			}
-		}, 250);
+		}, SEARCH_DEBOUNCE_MS);
 
 		return () => {
 			window.clearTimeout(timeout);

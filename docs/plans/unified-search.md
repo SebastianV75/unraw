@@ -1,6 +1,6 @@
 # Plan de implementación: búsqueda unificada
 
-Estado: Fases 1–4 implementadas; tests, typecheck y build de `web` pasan; verificación visual autenticada pendiente por falta de variables Supabase/auth en este entorno
+Estado: Fases 1–4 implementadas; tests, typecheck, build y lint de `web` pasan; caché/feedback de cliente implementados; optimización SQL `012` aplicada en Cloud, pendiente de medir con sesión autenticada
 Alcance: primera versión textual de la búsqueda global de Unraw  
 Ruta prevista: `/search`  
 Última actualización: 2026-08-16
@@ -397,6 +397,7 @@ El equipo puede ajustar nombres internos, pero debe conservar estas responsabili
 | `web/lib/search/types.ts` | Tipos de consulta, respuesta y resultado. |
 | `web/types/index.ts` | Reexportar tipos públicos si el proyecto lo requiere. |
 | `supabase/migrations/006_unified_search.sql` | Función/RPC, extensión y cambios SQL necesarios. |
+| `supabase/migrations/012_optimize_unified_search.sql` | Texto normalizado almacenado, índices trigram y RPC optimizada. |
 | `web/app/globals.css` | Layout responsive, etiquetas, fragmentos, resaltado, loading y scroll. |
 | `web/package.json` | Añadir script/dependencias de tests si se adopta el runner definido abajo. |
 
@@ -622,4 +623,4 @@ La búsqueda unificada se considera terminada cuando:
 
 ## 15. Siguiente acción
 
-La **Fase 0** está completada, la Fase 1 SQL está desplegada y validada en Cloud mediante las migraciones `006`–`011`, la route API está creada y las Fases 2–4 de cliente/UI están implementadas. Tests, typecheck y build de `web` pasan; queda pendiente el smoke visual autenticado y cualquier ajuste menor de interacción que dependa de variables Supabase/auth disponibles.
+La **Fase 0** está completada, la Fase 1 SQL está desplegada y validada en Cloud mediante las migraciones `006`–`012`, la route API está creada y las Fases 2–4 de cliente/UI están implementadas. El cliente ahora reutiliza búsquedas recientes en memoria y muestra feedback de actualización sin reemplazar la lista visible. La migración `012_optimize_unified_search.sql` añade texto normalizado almacenado e índices trigram para reducir el coste de la RPC; fue aplicada en Cloud y el lint remoto no reporta errores. Tests, typecheck, build y lint de `web` pasan; queda pendiente medir latencia con sesión autenticada, el smoke visual autenticado, RLS y la verificación de estados de UI.

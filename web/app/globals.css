@@ -530,6 +530,27 @@ a:active {
 .command-search-row input::placeholder {
   color: var(--text-muted);
 }
+.search-input-progress {
+  display: inline-grid;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  place-items: center;
+  color: var(--text-muted);
+}
+.search-spinner {
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid color-mix(in oklch, currentColor 28%, transparent);
+  border-top-color: currentColor;
+  border-radius: 999px;
+  animation: search-spinner-rotate 700ms linear infinite;
+}
+@keyframes search-spinner-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
 .command-close,
 .app-shell-icon-button {
   display: inline-grid;
@@ -630,10 +651,16 @@ a:active {
   border-radius: 6px;
   padding: 10px;
   color: var(--text-primary);
+  transition: background-color 120ms ease-out, box-shadow 120ms ease-out;
 }
 .search-result-row:hover,
 .search-result-row.is-active {
   background: var(--bg-active);
+  box-shadow: inset 2px 0 var(--accent);
+}
+.search-result-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 .search-result-main {
   display: flex;
@@ -714,6 +741,9 @@ a:active {
   background: var(--bg-hover);
   color: var(--text-primary);
 }
+.command-expand {
+  transition: background-color 120ms ease-out, color 120ms ease-out;
+}
 .search-page {
   width: min(100%, 880px);
 }
@@ -753,6 +783,9 @@ a:active {
 .search-page-input-row input::placeholder {
   color: var(--text-muted);
 }
+.search-page-input-row .search-input-progress {
+  margin-left: 4px;
+}
 .search-page-explanation {
   margin: 0;
   padding: 16px 18px 20px;
@@ -778,6 +811,16 @@ a:active {
   padding: 16px 18px;
   color: var(--text-secondary);
   font-size: 13px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .search-spinner {
+    animation-duration: 1.4s;
+  }
+
+  .search-result-row,
+  .command-expand {
+    transition: none;
+  }
 }
 /* Markdown editor document variant. */
 .markdown-editor-document {
