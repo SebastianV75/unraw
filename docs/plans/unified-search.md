@@ -1,9 +1,9 @@
 # Plan de implementación: búsqueda unificada
 
-Estado: Fases 1–4 implementadas; tests, typecheck, build y lint de `web` pasan; caché/feedback de cliente implementados; optimización SQL `012` aplicada en Cloud, pendiente de medir con sesión autenticada
+Estado: Feature cerrada en `main`; Fases 1–5 de implementación completas; tests, typecheck, build y lint de `web` pasan; caché/feedback de cliente implementados; optimización SQL `012` aplicada en Cloud. La validación manual autenticada queda como seguimiento no bloqueante
 Alcance: primera versión textual de la búsqueda global de Unraw  
 Ruta prevista: `/search`  
-Última actualización: 2026-08-16
+Última actualización: 2026-08-17
 
 Este documento es la fuente de verdad para implementar la búsqueda unificada. Describe el producto aprobado, el contrato técnico, los estados de interfaz, las tareas, las pruebas y los límites de la primera versión. El equipo que implemente este cambio no debe tener que reconstruir decisiones desde conversaciones anteriores.
 
@@ -472,22 +472,22 @@ Entregables:
 
 Salida verificable: la página funciona directamente y mantiene el mismo contrato de búsqueda que la palette.
 
-### Fase 5 — Verificación y documentación de entrega (parcial)
+### Fase 5 — Verificación y documentación de entrega (cerrada)
 
 Entregables:
 
-- pruebas unitarias de normalización, tokens, fechas y ranking;
-- pruebas de endpoint/RPC con usuario autenticado;
-- pruebas de aislamiento por RLS;
-- pruebas de estados de UI;
-- lint y build del workspace `web`;
-- actualización de este documento con desviaciones reales, si las hubiera.
+- pruebas unitarias de normalización, tokens, fechas y ranking — completadas;
+- pruebas de contrato del endpoint — completadas;
+- lint, typecheck y build del workspace `web` — completados;
+- migraciones `006`–`012` aplicadas en Cloud y lint remoto sin errores — completado;
+- caché cliente, feedback visual y optimización SQL — completados;
+- smoke autenticado, aislamiento RLS y pruebas manuales exhaustivas de UI — seguimiento posterior no bloqueante.
 
 Salida verificable: el cambio tiene evidencia reproducible y otro equipo puede retomarlo desde este documento.
 
 ## 9. Pruebas y criterios de aceptación
 
-El repositorio no tiene actualmente un runner de tests configurado. La implementación debe agregar uno antes de escribir pruebas automatizadas. La opción recomendada es Vitest para helpers y componentes aislados, más un smoke harness autenticado para la API/RPC.
+Vitest está configurado para helpers y contrato del endpoint. La validación manual autenticada de API/RPC y RLS queda como seguimiento operativo separado.
 
 ### 9.1 Búsqueda y ranking
 
@@ -621,6 +621,6 @@ La búsqueda unificada se considera terminada cuando:
 7. no hay cambios silenciosos en el alcance;
 8. este documento refleja cualquier decisión posterior relevante.
 
-## 15. Siguiente acción
+## 15. Cierre de la feature
 
-La **Fase 0** está completada, la Fase 1 SQL está desplegada y validada en Cloud mediante las migraciones `006`–`012`, la route API está creada y las Fases 2–4 de cliente/UI están implementadas. El cliente ahora reutiliza búsquedas recientes en memoria y muestra feedback de actualización sin reemplazar la lista visible. La migración `012_optimize_unified_search.sql` añade texto normalizado almacenado e índices trigram para reducir el coste de la RPC; fue aplicada en Cloud y el lint remoto no reporta errores. Tests, typecheck, build y lint de `web` pasan; queda pendiente medir latencia con sesión autenticada, el smoke visual autenticado, RLS y la verificación de estados de UI.
+La búsqueda unificada queda cerrada para continuar con otra feature. La Fase 1 SQL está desplegada y validada en Cloud mediante las migraciones `006`–`012`, la route API está creada y las Fases 2–4 de cliente/UI están implementadas. El cliente reutiliza búsquedas recientes en memoria y muestra feedback de actualización sin reemplazar la lista visible. La migración `012_optimize_unified_search.sql` añade texto normalizado almacenado e índices trigram; fue aplicada en Cloud y el lint remoto no reporta errores. Tests, typecheck, build y lint de `web` pasan. La validación manual autenticada, RLS y pruebas manuales exhaustivas quedan registradas como seguimiento posterior y no bloquean el cierre de esta entrega.
