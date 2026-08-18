@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 import type { SearchMode, SearchResult, SearchResponse } from "@/lib/search/types";
 
 export type UnifiedSearchState = "idle" | "loading" | "refreshing" | "success" | "empty" | "error";
@@ -52,15 +53,40 @@ export function useUnifiedSearch(
 	const [state, setState] = useState<UnifiedSearchState>("idle");
 	const [results, setResults] = useState<SearchResult[]>([]);
 	const [error, setError] = useState<string | null>(null);
+	const [authGeneration, setAuthGeneration] = useState(0);
 	const resultsRef = useRef(results);
 	const requestIdRef = useRef(0);
+	const authGenerationRef = useRef(0);
 	const controllerRef = useRef<AbortController | null>(null);
 
 	resultsRef.current = results;
+	useEffect(() => {
+		const supabase = createClient();
+		const {
+			data: { subscription },
+		} = supabase.auth.onAuthStateChange((event) => {
+			if (event !== "SIGNED_OUT" && event !== "SIGNED_IN") return;
+
+			searchCache.clear();
+			authGenerationRef.current += 1;
+			requestIdRef.current += 1;
+			controllerRef.current?.abort();
+			controllerRef.current = null;
+			setResults([]);
+			setState("idle");
+			setError(null);
+			setAuthGeneration((generation) => generation + 1);
+		});
+
+		return () => {
+			subscription.unsubscribe();
+		};
+	}, []);
 
 	useEffect(() => {
 		const normalizedQuery = query.trim();
 		const requestId = ++requestIdRef.current;
+		const currentAuthGeneration = authGenerationRef.current;
 		controllerRef.current?.abort();
 		controllerRef.current = null;
 
@@ -105,7 +131,12 @@ export function useUnifiedSearch(
 
 				const payload = (await response.json()) as Partial<SearchResponse>;
 				if (!Array.isArray(payload.results)) throw new Error(SEARCH_ERROR);
-				if (requestId !== requestIdRef.current) return;
+				if (
+					controller.signal.aborted ||
+					requestId !== requestIdRef.current ||
+					currentAuthGeneration !== authGenerationRef.current
+				)
+					return;
 
 				const nextResults = payload.results as SearchResult[];
 				writeCache(cacheKey, nextResults);
@@ -113,7 +144,12 @@ export function useUnifiedSearch(
 				setState(nextResults.length > 0 ? "success" : "empty");
 				setError(null);
 			} catch (cause) {
-				if (controller.signal.aborted || requestId !== requestIdRef.current) return;
+				if (
+					controller.signal.aborted ||
+					requestId !== requestIdRef.current ||
+					currentAuthGeneration !== authGenerationRef.current
+				)
+					return;
 				setState("error");
 				setError(SEARCH_ERROR);
 			}
@@ -121,9 +157,11 @@ export function useUnifiedSearch(
 
 		return () => {
 			window.clearTimeout(timeout);
+			requestIdRef.current += 1;
 			controllerRef.current?.abort();
+			controllerRef.current = null;
 		};
-	}, [mode, query]);
+	}, [authGeneration, mode, query]);
 
 	return { state, results, error };
 }
