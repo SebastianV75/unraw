@@ -7,6 +7,7 @@ import { useState } from "react";
 import { MarkdownRenderer } from "@/components/capture/MarkdownRenderer";
 import { LoadingButton } from "@/components/interior/loading-button";
 import { ShowMore } from "@/components/interior/show-more";
+import { getCaptureReviewState } from "@/lib/captures/review-state";
 import type { Area, CaptureOutput, CaptureSuggestion } from "@/types";
 
 function suggestionKey(suggestion: CaptureSuggestion) {
@@ -111,16 +112,11 @@ export function CaptureReviewPanel({
 	onSave,
 	onRetry,
 }: ReviewProps) {
-	const resultCount =
-		result.tasks.filter((_, index) => !rejectedItems[`task:${index}`]).length +
-		result.ideas.filter((_, index) => !rejectedItems[`idea:${index}`]).length +
-		result.second_brain.filter(
-			(_, index) => !rejectedItems[`knowledge:${index}`],
-		).length;
 	const approvedSuggestionCount = suggestions.filter((suggestion) =>
 		Boolean(approved[suggestionKey(suggestion)]),
 	).length;
-	const emptyCapture = resultCount === 0 && approvedSuggestionCount === 0;
+	const { originallyEmpty, emptyAfterManualDiscard, remainingResultCount } =
+		getCaptureReviewState(result, rejectedItems, approvedSuggestionCount);
 	const [editingDestination, setEditingDestination] = useState<
 		Record<string, boolean>
 	>({});
@@ -270,8 +266,10 @@ export function CaptureReviewPanel({
 					/>
 					<span className="capture-result-summary-label">Resumen listo</span>
 					<strong>
-						{resultCount}{" "}
-						{resultCount === 1 ? "elemento listo" : "elementos listos"}
+							{remainingResultCount}{" "}
+							{remainingResultCount === 1
+								? "elemento listo"
+								: "elementos listos"}
 					</strong>
 				</div>
 			</section>
@@ -353,7 +351,17 @@ export function CaptureReviewPanel({
 								))}
 							</CaptureGroup>
 						)}
-						{emptyCapture && (
+						{originallyEmpty && (
+							<div className="capture-empty-result" role="status">
+								<p>
+									Conservaremos íntegramente tu nota original en Inbox al guardar
+									{suggestions.length > 0
+										? "; las sugerencias aprobadas también se guardarán."
+										: "."}
+								</p>
+							</div>
+						)}
+						{emptyAfterManualDiscard && (
 							<div className="capture-empty-result" role="status">
 								<p>
 									{suggestions.length > 0
@@ -438,7 +446,7 @@ export function CaptureReviewPanel({
 						<LoadingButton
 							className="capture-save-action"
 							onAction={onSave}
-							disabled={saving || emptyCapture}
+							disabled={saving || emptyAfterManualDiscard}
 							pendingLabel="Guardando…"
 						>
 							Confirmar y guardar

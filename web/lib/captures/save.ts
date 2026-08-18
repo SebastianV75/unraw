@@ -1,9 +1,10 @@
 import { z } from "zod"
 import { createClient, getUser } from "@/lib/supabase/server"
 import { processNoteOutputSchema } from "@/lib/ai/process-note"
+import { parseSaveCaptureResult } from "@/lib/captures/receipt"
 import type { SaveCaptureInput, SaveCaptureResult } from "@/types"
 
-const inputSchema = z.object({ idempotency_key: z.string().uuid(), raw_note: z.string().trim().min(1).max(12000), confirmed_output: processNoteOutputSchema, assignments: z.record(z.string(), z.string().uuid().nullable()) })
+const inputSchema = z.object({ idempotency_key: z.string().uuid(), raw_note: z.string().min(1).max(12000).refine((value) => value.trim().length > 0, "A note is required."), confirmed_output: processNoteOutputSchema, assignments: z.record(z.string(), z.string().uuid().nullable()), fallback_to_inbox: z.boolean().default(false) })
 
 export async function saveCapture(body: unknown): Promise<SaveCaptureResult> {
   const input = inputSchema.parse(body) as SaveCaptureInput
@@ -14,7 +15,11 @@ export async function saveCapture(body: unknown): Promise<SaveCaptureResult> {
     input.confirmed_output.tasks.length > 0 ||
     input.confirmed_output.ideas.length > 0 ||
     input.confirmed_output.second_brain.length > 0 ||
-    hasApprovedSuggestion
+    hasApprovedSuggestion ||
+    (input.fallback_to_inbox &&
+      input.confirmed_output.tasks.length === 0 &&
+      input.confirmed_output.ideas.length === 0 &&
+      input.confirmed_output.second_brain.length === 0)
   if (!hasSaveableOutput) {
     throw new Error("No hay elementos para guardar. Edita la nota y vuelve a intentarlo.")
   }
@@ -42,7 +47,11 @@ export async function saveCapture(body: unknown): Promise<SaveCaptureResult> {
   const secondBrain = input.confirmed_output.second_brain.map((item, i) => ({ ...item, area_id: area("knowledge", i, item.area_id) }))
   const approved = input.confirmed_output.suggestions.filter((item) => input.assignments[`suggestion:${item.type}:${item.name.toLowerCase()}`]).map((item) => ({ ...item, area_id: input.assignments[`suggestion-area:${item.type}:${item.name.toLowerCase()}`] ?? item.area_id ?? null }))
   const outputSnapshot = { ...input.confirmed_output, assignments: input.assignments }
-  const { data, error } = await supabase.rpc("save_capture", { p_idempotency_key: input.idempotency_key, p_raw_note: input.raw_note, p_tasks: tasks, p_ideas: ideas, p_second_brain: secondBrain, p_inbox: [], p_output_snapshot: outputSnapshot, p_approved_suggestions: approved })
+  const fallbackInbox = input.fallback_to_inbox &&
+    input.confirmed_output.tasks.length === 0 &&
+    input.confirmed_output.ideas.length === 0 &&
+    input.confirmed_output.second_brain.length === 0
+  const { data, error } = await supabase.rpc("save_capture", { p_idempotency_key: input.idempotency_key, p_raw_note: input.raw_note, p_tasks: tasks, p_ideas: ideas, p_second_brain: secondBrain, p_inbox: fallbackInbox ? [{ kind: "knowledge", title: "Captura original", content: input.raw_note }] : [], p_output_snapshot: outputSnapshot, p_approved_suggestions: approved })
   if (error) throw new Error(error.message)
-  return data as SaveCaptureResult
+  return parseSaveCaptureResult(data)
 }

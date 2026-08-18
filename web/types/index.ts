@@ -48,6 +48,7 @@ export type SaveCaptureInput = {
 	raw_note: string;
 	confirmed_output: CaptureOutput;
 	assignments: CaptureAssignments;
+	fallback_to_inbox?: boolean;
 };
 export type SaveCaptureResult = {
 	batch_id: string;
