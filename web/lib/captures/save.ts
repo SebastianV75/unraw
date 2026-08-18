@@ -7,6 +7,17 @@ const inputSchema = z.object({ idempotency_key: z.string().uuid(), raw_note: z.s
 
 export async function saveCapture(body: unknown): Promise<SaveCaptureResult> {
   const input = inputSchema.parse(body) as SaveCaptureInput
+  const hasApprovedSuggestion = input.confirmed_output.suggestions.some((item) =>
+    Boolean(input.assignments[`suggestion:${item.type}:${item.name.toLowerCase()}`]),
+  )
+  const hasSaveableOutput =
+    input.confirmed_output.tasks.length > 0 ||
+    input.confirmed_output.ideas.length > 0 ||
+    input.confirmed_output.second_brain.length > 0 ||
+    hasApprovedSuggestion
+  if (!hasSaveableOutput) {
+    throw new Error("No hay elementos para guardar. Edita la nota y vuelve a intentarlo.")
+  }
   const user = await getUser()
   if (!user) throw new Error("Authentication is required.")
   const supabase = await createClient()

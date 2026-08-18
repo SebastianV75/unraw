@@ -383,6 +383,7 @@ export default function CapturePage() {
 							setRejectedItems((current) => ({ ...current, [key]: true }))
 						}
 						onSave={saveResults}
+						onRetry={process}
 					/>
 				)}
 			</div>

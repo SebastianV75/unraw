@@ -58,6 +58,7 @@ type ReviewProps = {
 	onCancelEdit: () => void;
 	onReject: (key: string) => void;
 	onSave: () => Promise<void>;
+	onRetry: () => Promise<void>;
 };
 
 function CaptureGroup({
@@ -108,9 +109,18 @@ export function CaptureReviewPanel({
 	onCancelEdit,
 	onReject,
 	onSave,
+	onRetry,
 }: ReviewProps) {
 	const resultCount =
-		result.tasks.length + result.ideas.length + result.second_brain.length;
+		result.tasks.filter((_, index) => !rejectedItems[`task:${index}`]).length +
+		result.ideas.filter((_, index) => !rejectedItems[`idea:${index}`]).length +
+		result.second_brain.filter(
+			(_, index) => !rejectedItems[`knowledge:${index}`],
+		).length;
+	const approvedSuggestionCount = suggestions.filter((suggestion) =>
+		Boolean(approved[suggestionKey(suggestion)]),
+	).length;
+	const emptyCapture = resultCount === 0 && approvedSuggestionCount === 0;
 	const [editingDestination, setEditingDestination] = useState<
 		Record<string, boolean>
 	>({});
@@ -343,11 +353,22 @@ export function CaptureReviewPanel({
 								))}
 							</CaptureGroup>
 						)}
-						{resultCount === 0 && suggestions.length === 0 && (
-							<p className="capture-empty-result">
-								No encontramos elementos claros para ordenar. Puedes editar tu
-								nota y volver a intentarlo.
-							</p>
+						{emptyCapture && (
+							<div className="capture-empty-result" role="status">
+								<p>
+									{suggestions.length > 0
+										? "Selecciona al menos una sugerencia para guardar."
+										: "No encontramos elementos claros para ordenar."}{" "}
+									Edita tu nota arriba y vuelve a intentarlo.
+								</p>
+								<button
+									type="button"
+									className="btn btn-primary btn-sm"
+									onClick={() => void onRetry().catch(() => undefined)}
+								>
+									Volver a intentar
+								</button>
+							</div>
 						)}
 					</section>
 					{suggestions.length > 0 && (
@@ -417,7 +438,7 @@ export function CaptureReviewPanel({
 						<LoadingButton
 							className="capture-save-action"
 							onAction={onSave}
-							disabled={saving}
+							disabled={saving || emptyCapture}
 							pendingLabel="Guardando…"
 						>
 							Confirmar y guardar
