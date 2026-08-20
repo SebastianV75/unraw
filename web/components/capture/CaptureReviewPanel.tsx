@@ -3,11 +3,14 @@ import Bulb from "reicon-react/icons/Bulb";
 import Check3 from "reicon-react/icons/Check3";
 import ListCheck from "reicon-react/icons/ListCheck";
 import type { IconComponent } from "reicon-react/createIcon";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MarkdownRenderer } from "@/components/capture/MarkdownRenderer";
 import { LoadingButton } from "@/components/interior/loading-button";
 import { ShowMore } from "@/components/interior/show-more";
-import { getCaptureReviewState } from "@/lib/captures/review-state";
+import {
+	getCaptureReviewState,
+	type CaptureUndoToken,
+} from "@/lib/captures/review-state";
 import type { Area, CaptureOutput, CaptureSuggestion } from "@/types";
 
 function suggestionKey(suggestion: CaptureSuggestion) {
@@ -46,6 +49,7 @@ type ReviewProps = {
 	editedValues: Record<string, string>;
 	projectAreas: Record<string, string>;
 	saving: boolean;
+	undoToken: CaptureUndoToken | null;
 	onAssignedAreaChange: (
 		kind: string,
 		index: number,
@@ -58,6 +62,7 @@ type ReviewProps = {
 	onSaveEdit: (kind: string, index: number) => void;
 	onCancelEdit: () => void;
 	onReject: (key: string) => void;
+	onUndoReject: (key: string, token: CaptureUndoToken) => void;
 	onSave: () => Promise<void>;
 	onRetry: () => Promise<void>;
 };
@@ -81,7 +86,7 @@ function CaptureGroup({
 					strokeWidth={1.7}
 					aria-hidden="true"
 				/>
-				<h2>{title}</h2>
+				<h3>{title}</h3>
 			</div>
 			<div className="space-y-3">{children}</div>
 		</div>
@@ -101,6 +106,7 @@ export function CaptureReviewPanel({
 	editedValues,
 	projectAreas,
 	saving,
+	undoToken,
 	onAssignedAreaChange,
 	onApprove,
 	onProjectAreaChange,
@@ -109,6 +115,7 @@ export function CaptureReviewPanel({
 	onSaveEdit,
 	onCancelEdit,
 	onReject,
+	onUndoReject,
 	onSave,
 	onRetry,
 }: ReviewProps) {
@@ -120,11 +127,21 @@ export function CaptureReviewPanel({
 	const [editingDestination, setEditingDestination] = useState<
 		Record<string, boolean>
 	>({});
-	const selectedArea = (
-		kind: string,
-		index: number,
-		fallback: string | null,
-	) =>
+	const undoButtonRef = useRef<HTMLButtonElement | null>(null);
+	const cardRefs = useRef<Record<string, HTMLElement | null>>({});
+	const [focusAfterUndoKey, setFocusAfterUndoKey] = useState<string | null>(
+		null,
+	);
+	useEffect(() => {
+		if (undoToken) undoButtonRef.current?.focus();
+	}, [undoToken]);
+	useEffect(() => {
+		if (!undoToken && focusAfterUndoKey) {
+			cardRefs.current[focusAfterUndoKey]?.focus();
+			setFocusAfterUndoKey(null);
+		}
+	}, [undoToken, focusAfterUndoKey]);
+	const selectedArea = (kind: string, index: number, fallback: string | null) =>
 		Object.prototype.hasOwnProperty.call(assignedAreas, `${kind}:${index}`)
 			? assignedAreas[`${kind}:${index}`]
 			: fallback;
@@ -133,13 +150,13 @@ export function CaptureReviewPanel({
 		const destination = selectedArea(kind, index, current);
 		if (destination && !editingDestination[key]) {
 			return (
-				<div className="capture-item-destination" role="status">
-					<span>
-						Sugerimos{" "}
-						<strong>{areaNames.get(destination) ?? "este destino"}</strong>.
+				<div className="capture-item-destination">
+					<span role="status" aria-live="polite">
+						Sugerimos <strong>{areaNames.get(destination) ?? "este destino"}</strong>.
 					</span>
 					<button
 						type="button"
+						disabled={saving}
 						className="capture-item-change"
 						onClick={() =>
 							setEditingDestination((previous) => ({
@@ -156,7 +173,8 @@ export function CaptureReviewPanel({
 		return (
 			<div className="capture-item-destination capture-item-destination-editing">
 				<select
-					className="select select-bordered select-xs"
+					className="capture-touch-select select select-bordered select-xs"
+					disabled={saving}
 					value={destination ?? ""}
 					onChange={(event) => {
 						onAssignedAreaChange(kind, index, event.target.value || null);
@@ -177,6 +195,7 @@ export function CaptureReviewPanel({
 				{destination && (
 					<button
 						type="button"
+						disabled={saving}
 						className="capture-item-change"
 						onClick={() =>
 							setEditingDestination((previous) => ({
@@ -195,9 +214,27 @@ export function CaptureReviewPanel({
 		const key = `${kind}:${index}`;
 		if (rejectedItems[key])
 			return (
-				<p className="capture-item-discarded" role="status">
-					Descartado; este elemento no se guardará.
-				</p>
+				<div className="capture-item-discarded">
+					<span role="status" aria-live="polite">
+						{undoToken?.key === key
+							? "Elemento descartado; puedes deshacerlo"
+							: "Descartado; este elemento no se guardará."}
+					</span>
+					{undoToken?.key === key && (
+						<button
+							ref={undoButtonRef}
+							type="button"
+							className="btn btn-ghost btn-xs"
+							disabled={saving}
+							onClick={() => {
+								setFocusAfterUndoKey(key);
+								onUndoReject(key, undoToken);
+							}}
+						>
+							Deshacer descarte
+						</button>
+					)}
+				</div>
 			);
 		if (editingItem === key)
 			return (
@@ -208,6 +245,7 @@ export function CaptureReviewPanel({
 					<textarea
 						id={`edit-${key}`}
 						className="textarea textarea-bordered w-full"
+						disabled={saving}
 						value={editedValues[key] ?? value}
 						onChange={(event) => onEditedValueChange(key, event.target.value)}
 					/>
@@ -215,6 +253,7 @@ export function CaptureReviewPanel({
 						<button
 							type="button"
 							className="btn btn-primary btn-xs"
+							disabled={saving}
 							onClick={() => onSaveEdit(kind, index)}
 						>
 							Guardar edición
@@ -222,6 +261,7 @@ export function CaptureReviewPanel({
 						<button
 							type="button"
 							className="btn btn-ghost btn-xs"
+							disabled={saving}
 							onClick={onCancelEdit}
 						>
 							Cancelar
@@ -234,6 +274,7 @@ export function CaptureReviewPanel({
 				<button
 					type="button"
 					className="btn btn-ghost btn-xs"
+					disabled={saving}
 					onClick={() => onBeginEdit(kind, index, value)}
 				>
 					Editar elemento
@@ -241,6 +282,7 @@ export function CaptureReviewPanel({
 				<button
 					type="button"
 					className="btn btn-ghost btn-xs text-error"
+					disabled={saving}
 					onClick={() => onReject(key)}
 				>
 					Rechazar elemento
@@ -250,12 +292,14 @@ export function CaptureReviewPanel({
 	};
 
 	return (
-		<div className="capture-result-area" aria-label="Resultado de la captura">
-			<section
-				className="capture-result-summary"
-				role="status"
-				aria-live="polite"
-			>
+		<section
+			className="capture-result-area"
+			aria-labelledby="capture-review-heading"
+		>
+			<h2 id="capture-review-heading" className="sr-only">
+				Revisión de la captura
+			</h2>
+			<section className="capture-result-summary" role="status" aria-live="polite">
 				<div>
 					<Check3
 						size={16}
@@ -266,10 +310,8 @@ export function CaptureReviewPanel({
 					/>
 					<span className="capture-result-summary-label">Resumen listo</span>
 					<strong>
-							{remainingResultCount}{" "}
-							{remainingResultCount === 1
-								? "elemento listo"
-								: "elementos listos"}
+						{remainingResultCount}{" "}
+						{remainingResultCount === 1 ? "elemento listo" : "elementos listos"}
 					</strong>
 				</div>
 			</section>
@@ -280,7 +322,7 @@ export function CaptureReviewPanel({
 				defaultExpanded
 				lines={2}
 				maxHeight={900}
-				className="mt-3"
+				className="capture-review-disclosure mt-3"
 			>
 				<div className="capture-results-wrapper space-y-6">
 					<section className="capture-results-grid grid gap-4 md:grid-cols-3">
@@ -289,9 +331,14 @@ export function CaptureReviewPanel({
 								{result.tasks.map((item, index) => (
 									<article
 										className="capture-result-card rounded-box border p-4"
+										aria-label={`Tarea ${index + 1}: ${item.title}`}
+										tabIndex={-1}
+										ref={(node) => {
+											cardRefs.current[`task:${index}`] = node;
+										}}
 										key={`${item.title}-${index}`}
 									>
-										<MarkdownRenderer content={item.title} compact />
+										<MarkdownRenderer content={item.title} compact headingMode="card" />
 										<p className="mt-2 text-xs text-base-content/60">
 											{areaNames.get(item.area_id ?? "") ??
 												item.suggested_new_area ??
@@ -316,9 +363,14 @@ export function CaptureReviewPanel({
 								{result.ideas.map((item, index) => (
 									<article
 										className="capture-result-card rounded-box border p-4"
+										aria-label={`Idea ${index + 1}: ${item.content}`}
+										tabIndex={-1}
+										ref={(node) => {
+											cardRefs.current[`idea:${index}`] = node;
+										}}
 										key={`${item.content}-${index}`}
 									>
-										<MarkdownRenderer content={item.content} />
+										<MarkdownRenderer content={item.content} headingMode="card" />
 										<p className="mt-2 text-xs text-base-content/60">
 											{areaNames.get(item.area_id ?? "") ??
 												item.suggested_new_area ??
@@ -335,11 +387,15 @@ export function CaptureReviewPanel({
 								{result.second_brain.map((item, index) => (
 									<article
 										className="capture-result-card rounded-box border p-4"
+										aria-label={`Conocimiento ${index + 1}: ${item.title}`}
+										tabIndex={-1}
+										ref={(node) => {
+											cardRefs.current[`knowledge:${index}`] = node;
+										}}
 										key={`${item.title}-${index}`}
 									>
-										<MarkdownRenderer
-											content={`## ${item.title}\n\n${item.content}`}
-										/>
+										<h4 className="capture-card-title">{item.title}</h4>
+										<MarkdownRenderer content={item.content} headingMode="card" />
 										<p className="mt-2 text-xs text-base-content/60">
 											{areaNames.get(item.area_id ?? "") ??
 												item.suggested_new_area ??
@@ -362,8 +418,8 @@ export function CaptureReviewPanel({
 							</div>
 						)}
 						{emptyAfterManualDiscard && (
-							<div className="capture-empty-result" role="status">
-								<p>
+							<div className="capture-empty-result">
+								<p role="status" aria-live="polite">
 									{suggestions.length > 0
 										? "Selecciona al menos una sugerencia para guardar."
 										: "No encontramos elementos claros para ordenar."}{" "}
@@ -371,7 +427,8 @@ export function CaptureReviewPanel({
 								</p>
 								<button
 									type="button"
-									className="btn btn-primary btn-sm"
+									className="capture-retry-action btn btn-primary btn-sm"
+									disabled={saving}
 									onClick={() => void onRetry().catch(() => undefined)}
 								>
 									Volver a intentar
@@ -382,12 +439,10 @@ export function CaptureReviewPanel({
 					{suggestions.length > 0 && (
 						<section className="capture-suggestions space-y-4 rounded-box border p-5">
 							<div>
-								<h2 className="text-xl font-semibold">
-									Sugerencias para revisar
-								</h2>
+								<h3 className="text-xl font-semibold">Sugerencias para revisar</h3>
 								<p className="mt-1 text-sm text-base-content/70">
-									Encontramos una estructura que podría ayudarte. Confirma solo
-									lo que quieras incorporar.
+									Encontramos una estructura que podría ayudarte. Confirma solo lo que
+									quieras incorporar.
 								</p>
 							</div>
 							{suggestions.map((suggestion) => (
@@ -398,13 +453,11 @@ export function CaptureReviewPanel({
 									<label className="flex flex-1 gap-3">
 										<input
 											className="checkbox checkbox-primary mt-1"
+											disabled={saving}
 											type="checkbox"
 											checked={Boolean(approved[suggestionKey(suggestion)])}
 											onChange={(event) =>
-												onApprove(
-													suggestionKey(suggestion),
-													event.target.checked,
-												)
+												onApprove(suggestionKey(suggestion), event.target.checked)
 											}
 										/>
 										<span>
@@ -416,17 +469,13 @@ export function CaptureReviewPanel({
 									</label>
 									{suggestion.type === "new_project" && (
 										<select
-											className="select select-bordered select-sm"
+											className="capture-touch-select select select-bordered select-sm"
+											disabled={saving}
 											value={
-												projectAreas[suggestionKey(suggestion)] ??
-												suggestion.area_id ??
-												""
+												projectAreas[suggestionKey(suggestion)] ?? suggestion.area_id ?? ""
 											}
 											onChange={(event) =>
-												onProjectAreaChange(
-													suggestionKey(suggestion),
-													event.target.value,
-												)
+												onProjectAreaChange(suggestionKey(suggestion), event.target.value)
 											}
 											aria-label={`Área para ${suggestion.name}`}
 										>
@@ -442,18 +491,20 @@ export function CaptureReviewPanel({
 							))}
 						</section>
 					)}
-					<div className="flex justify-end">
+					<div className="capture-save-row flex justify-end">
 						<LoadingButton
 							className="capture-save-action"
 							onAction={onSave}
 							disabled={saving || emptyAfterManualDiscard}
 							pendingLabel="Guardando…"
+							successLabel="Guardado"
+							errorLabel="Reintentar"
 						>
 							Confirmar y guardar
 						</LoadingButton>
 					</div>
 				</div>
 			</ShowMore>
-		</div>
+		</section>
 	);
 }

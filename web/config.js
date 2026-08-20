@@ -71,11 +71,6 @@ const config = {
 				"Tu lugar quedó reservado. Te escribiremos cuando Unraw esté listo.",
 		},
 	},
-	ai: {
-		structuredModel: "gpt-4o-mini",
-		maxTokens: 1500,
-		temperature: 0.4,
-	},
 	email: {
 		from: "Unraw <onboarding@resend.dev>",
 		replyTo: "onboarding@resend.dev",

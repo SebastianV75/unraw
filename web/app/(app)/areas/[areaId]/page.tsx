@@ -177,8 +177,7 @@ export default function AreaPage({
 			.delete()
 			.eq("id", areaId)
 			.eq("user_id", area?.user_id);
-		if (deleteError)
-			setError("No pudimos eliminar el área. Inténtalo de nuevo.");
+		if (deleteError) setError("No pudimos eliminar el área. Inténtalo de nuevo.");
 		else router.replace("/areas");
 	}
 
@@ -371,9 +370,7 @@ export default function AreaPage({
 				<div className="task-capture-shell">
 					<TaskForm
 						areaId={area.id}
-						onCreatedAction={(task) =>
-							setTasks((current) => [task, ...current])
-						}
+						onCreatedAction={(task) => setTasks((current) => [task, ...current])}
 					/>
 				</div>
 				<TaskList
@@ -398,9 +395,7 @@ export default function AreaPage({
 				<div className="idea-capture-shell">
 					<IdeaForm
 						areaId={area.id}
-						onCreatedAction={(idea) =>
-							setIdeas((current) => [idea, ...current])
-						}
+						onCreatedAction={(idea) => setIdeas((current) => [idea, ...current])}
 					/>
 				</div>
 				<IdeaList
@@ -478,16 +473,14 @@ export default function AreaPage({
 					/>
 				</div>
 				{knowledge.length === 0 ? (
-					<p className="app-empty-state">
-						Aún no hay conocimiento en esta área.
-					</p>
+					<p className="app-empty-state">Aún no hay conocimiento en esta área.</p>
 				) : (
 					<div className="app-knowledge-list">
 						{knowledge.slice(0, 4).map((entry) => (
 							<article className="app-knowledge-item" key={entry.id}>
 								<h3>{entry.title}</h3>
 								<div className="markdown-content">
-									<MarkdownRenderer content={entry.content} />
+									<MarkdownRenderer content={entry.content} headingMode="card" />
 								</div>
 							</article>
 						))}

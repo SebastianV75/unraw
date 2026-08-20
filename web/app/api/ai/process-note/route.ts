@@ -6,10 +6,11 @@ import {
 	ProcessNoteError,
 } from "@/lib/ai/process-note";
 import { decryptOpenRouterToken } from "@/lib/security/openrouter-token";
+import { FREE_MODEL } from "@/lib/ai/models";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
-const FREE_MODEL = "gpt-4.1-nano";
 const OPENROUTER_URL = "https://openrouter.ai/api/v1";
 
 function errorResponse(message: string, status: number) {
@@ -104,11 +105,22 @@ export async function POST(request: Request) {
 		});
 		return NextResponse.json(output);
 	} catch (error) {
-		if (
-			profile.tier === "free" &&
-			(error instanceof ProcessNoteError ? error.status >= 500 : true)
-		)
-			await supabase.rpc("refund_free_capture");
+		if (profile.tier === "free") {
+			try {
+				const admin = createAdminClient();
+				const { error: refundError } = await admin.rpc("refund_free_capture", {
+					p_user_id: user.id,
+				});
+				if (refundError)
+					console.error("[process-note] Free capture refund failed", {
+						code: refundError.code,
+					});
+			} catch (refundError) {
+				console.error("[process-note] Free capture refund unavailable", {
+					code: refundError instanceof Error ? "configuration_missing" : "unknown",
+				});
+			}
+		}
 		if (error instanceof ProcessNoteError)
 			return errorResponse(error.message, error.status);
 		return errorResponse("The note could not be processed.", 500);

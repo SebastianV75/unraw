@@ -273,11 +273,12 @@ export async function processNote({
 
 	const context = input.user_context ?? { areas: [], projects: [] };
 	const client = new OpenAI({ apiKey, ...(baseURL ? { baseURL } : {}) });
+	const isGpt5Model = model.split("/").pop()?.startsWith("gpt-5") ?? false;
 	let response;
 	try {
 		response = await client.chat.completions.create({
 			model,
-			temperature: 0.2,
+			...(isGpt5Model ? {} : { temperature: 0.2 }),
 			response_format: { type: "json_object" },
 			messages: [
 				{

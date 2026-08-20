@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { encryptOpenRouterToken } from "@/lib/security/openrouter-token"
+import { DEFAULT_OPENROUTER_MODEL } from "@/lib/ai/models"
 import { createClient, getUser } from "@/lib/supabase/server"
 
 export const runtime = "nodejs"
-
-const DEFAULT_MODEL = "openai/gpt-4.1-nano"
 const settingsSchema = z.object({
   apiKey: z.string().trim().min(1).max(500).optional(),
   model: z.string().trim().min(1).max(200),
@@ -23,7 +22,7 @@ export async function GET() {
   const { data, error } = await supabase.from("profiles").select("openrouter_token, openrouter_model, tier").eq("id", user.id).single()
   if (error || !data) return errorResponse("OpenRouter settings could not be loaded.", 500)
 
-  return NextResponse.json({ configured: Boolean(data.openrouter_token && data.tier === "openrouter"), model: data.openrouter_model || DEFAULT_MODEL })
+  return NextResponse.json({ configured: Boolean(data.openrouter_token && data.tier === "openrouter"), model: data.openrouter_model || DEFAULT_OPENROUTER_MODEL })
 }
 
 export async function PUT(request: Request) {
@@ -55,7 +54,7 @@ export async function DELETE() {
   if (!user) return errorResponse("Authentication is required.", 401)
 
   const supabase = await createClient()
-  const { error } = await supabase.from("profiles").update({ openrouter_token: null, tier: "free" }).eq("id", user.id)
+  const { error } = await supabase.from("profiles").update({ openrouter_token: null, openrouter_model: DEFAULT_OPENROUTER_MODEL, tier: "free" }).eq("id", user.id)
   if (error) return errorResponse("OpenRouter settings could not be removed.", 500)
-  return NextResponse.json({ configured: false, model: DEFAULT_MODEL })
+  return NextResponse.json({ configured: false, model: DEFAULT_OPENROUTER_MODEL })
 }

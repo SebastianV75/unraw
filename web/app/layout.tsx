@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import "./circle-story.css";
 import config from "@/config";
@@ -13,6 +14,12 @@ const geist = Geist({
 const geistMono = Geist_Mono({
 	subsets: ["latin"],
 	variable: "--font-mono",
+	display: "swap",
+});
+
+const departureMono = localFont({
+	src: "./fonts/DepartureMono-Regular.woff2",
+	variable: "--font-pixel",
 	display: "swap",
 });
 
@@ -54,7 +61,7 @@ export default function RootLayout({
 			lang="es"
 			data-theme="unraw"
 			suppressHydrationWarning
-			className={`${geist.variable} ${geistMono.variable}`}
+			className={`${geist.variable} ${geistMono.variable} ${departureMono.variable}`}
 		>
 			<body className="bg-base-100 text-base-content">
 				<script

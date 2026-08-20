@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { CaptureReviewPanel } from "@/components/capture/CaptureReviewPanel";
 import { MarkdownEditor } from "@/components/capture/MarkdownEditor";
 import { LoadingButton } from "@/components/interior/loading-button";
@@ -19,25 +19,32 @@ import {
 } from "@/lib/captures/idempotency";
 import { createClient } from "@/lib/supabase/client";
 import type { Area, CaptureOutput, CaptureSuggestion, Project } from "@/types";
+import {
+	captureReviewReducer,
+	initialCaptureReviewState,
+} from "@/lib/captures/review-state";
 
 const suggestionKey = (suggestion: CaptureSuggestion) =>
 	`${suggestion.type}:${suggestion.name.toLowerCase()}`;
 
 export default function CapturePage() {
-	const [rawNote, setRawNote] = useState("");
+	const [review, dispatchReview] = useReducer(
+		captureReviewReducer,
+		initialCaptureReviewState,
+	);
+	const {
+		rawNote,
+		result,
+		approved,
+		assignedAreas,
+		rejectedItems,
+		undoToken,
+		editingItem,
+		editedValues,
+		projectAreas,
+	} = review;
 	const [areas, setAreas] = useState<Area[]>([]);
 	const [projects, setProjects] = useState<Project[]>([]);
-	const [result, setResult] = useState<CaptureOutput | null>(null);
-	const [approved, setApproved] = useState<Record<string, boolean>>({});
-	const [assignedAreas, setAssignedAreas] = useState<
-		Record<string, string | null>
-	>({});
-	const [rejectedItems, setRejectedItems] = useState<Record<string, boolean>>(
-		{},
-	);
-	const [editingItem, setEditingItem] = useState<string | null>(null);
-	const [editedValues, setEditedValues] = useState<Record<string, string>>({});
-	const [projectAreas, setProjectAreas] = useState<Record<string, string>>({});
 	const [loading, setLoading] = useState(true);
 	const [processing, setProcessing] = useState(false);
 	const [saving, setSaving] = useState(false);
@@ -52,15 +59,9 @@ export default function CapturePage() {
 	useEffect(() => {
 		const draft = readCaptureDraft(sessionStorage.getItem(CAPTURE_DRAFT_KEY));
 		if (draft) {
-			setRawNote(draft.rawNote);
+			dispatchReview({ type: "hydrate-draft", draft });
 			setIdempotencyKey(draft.idempotencyKey);
 			captureKeyRawNote.current = draft.idempotencyKey ? draft.rawNote : null;
-			setResult(draft.result);
-			setApproved(draft.approved);
-			setAssignedAreas(draft.assignedAreas);
-			setRejectedItems(draft.rejectedItems);
-			setEditedValues(draft.editedValues);
-			setProjectAreas(draft.projectAreas);
 		}
 		setDraftReady(true);
 	}, []);
@@ -73,11 +74,7 @@ export default function CapturePage() {
 		}
 		const draftKey =
 			idempotencyKey && captureKeyRawNote.current !== rawNote
-				? resolveIdempotencyKey(
-						idempotencyKey,
-						captureKeyRawNote.current,
-						rawNote,
-					)
+				? resolveIdempotencyKey(idempotencyKey, captureKeyRawNote.current, rawNote)
 				: idempotencyKey;
 		if (draftKey !== idempotencyKey) setIdempotencyKey(draftKey);
 		if (draftKey) captureKeyRawNote.current = rawNote;
@@ -117,11 +114,7 @@ export default function CapturePage() {
 			}
 			const [areaResult, projectResult] = await Promise.all([
 				supabase.from("areas").select("*").eq("user_id", user.id).order("name"),
-				supabase
-					.from("projects")
-					.select("*")
-					.eq("user_id", user.id)
-					.order("name"),
+				supabase.from("projects").select("*").eq("user_id", user.id).order("name"),
 			]);
 			if (areaResult.error || projectResult.error)
 				setError("No pudimos cargar el contexto de tu sistema.");
@@ -188,7 +181,7 @@ export default function CapturePage() {
 			setProcessing(true);
 			setError("");
 			setSuccess("");
-			setResult(null);
+			dispatchReview({ type: "processing-started" });
 			try {
 				const response = await fetch("/api/ai/process-note", {
 					method: "POST",
@@ -203,18 +196,10 @@ export default function CapturePage() {
 				};
 				if (!response.ok)
 					throw new Error(body.error || "No pudimos procesar la nota.");
-				setResult(body);
-				setApproved({});
-				setAssignedAreas({});
-				setRejectedItems({});
-				setEditingItem(null);
-				setEditedValues({});
-				setProjectAreas({});
+				dispatchReview({ type: "processed", result: body });
 			} catch (caught) {
 				setError(
-					caught instanceof Error
-						? caught.message
-						: "No pudimos procesar la nota.",
+					caught instanceof Error ? caught.message : "No pudimos procesar la nota.",
 				);
 				throw caught;
 			} finally {
@@ -223,11 +208,7 @@ export default function CapturePage() {
 		});
 	}
 
-	const selectedArea = (
-		kind: string,
-		index: number,
-		fallback: string | null,
-	) =>
+	const selectedArea = (kind: string, index: number, fallback: string | null) =>
 		Object.prototype.hasOwnProperty.call(assignedAreas, `${kind}:${index}`)
 			? assignedAreas[`${kind}:${index}`]
 			: fallback;
@@ -295,9 +276,8 @@ export default function CapturePage() {
 					assignments[`suggestion:${item.type}:${item.name.toLowerCase()}`] =
 						"00000000-0000-0000-0000-000000000000";
 					if (item.type === "new_project")
-						assignments[
-							`suggestion-area:${item.type}:${item.name.toLowerCase()}`
-						] = projectAreas[suggestionKey(item)] || item.area_id || null;
+						assignments[`suggestion-area:${item.type}:${item.name.toLowerCase()}`] =
+							projectAreas[suggestionKey(item)] || item.area_id || null;
 				});
 
 				const key = resolveIdempotencyKey(
@@ -351,8 +331,7 @@ export default function CapturePage() {
 				setSuccess(
 					`${receipt.existing ? "La captura ya estaba guardada." : "Captura guardada."} ${inboxMessage} Recibo: ${receipt.batch_id}`,
 				);
-				setResult(null);
-				setRawNote("");
+				dispatchReview({ type: "reset-after-save" });
 				setIdempotencyKey("");
 				captureKeyRawNote.current = null;
 				clearCaptureDraft();
@@ -373,29 +352,12 @@ export default function CapturePage() {
 		const key = `${kind}:${index}`;
 		const value = editedValues[key]?.trim();
 		if (!value || !result) return;
-		if (kind === "task") {
-			setResult({
-				...result,
-				tasks: result.tasks.map((item, itemIndex) =>
-					itemIndex === index ? { ...item, title: value } : item,
-				),
-			});
-		} else if (kind === "idea") {
-			setResult({
-				...result,
-				ideas: result.ideas.map((item, itemIndex) =>
-					itemIndex === index ? { ...item, content: value } : item,
-				),
-			});
-		} else {
-			setResult({
-				...result,
-				second_brain: result.second_brain.map((item, itemIndex) =>
-					itemIndex === index ? { ...item, title: value } : item,
-				),
-			});
-		}
-		setEditingItem(null);
+		dispatchReview({
+			type: "save-edit",
+			kind: kind as "task" | "idea" | "knowledge",
+			index,
+			value,
+		});
 	}
 
 	const areaNames = new Map(areas.map((area) => [area.id, area.name]));
@@ -406,6 +368,7 @@ export default function CapturePage() {
 	return (
 		<div className={`capture-workspace ${result ? "has-result" : "is-empty"}`}>
 			<div className="capture-minimal-shell">
+				<h1 className="sr-only">Captura</h1>
 				<form
 					className="capture-minimal-form"
 					onSubmit={(event) => {
@@ -415,9 +378,11 @@ export default function CapturePage() {
 				>
 					<MarkdownEditor
 						value={rawNote}
-						onChangeAction={setRawNote}
+						onChangeAction={(value) =>
+							dispatchReview({ type: "raw-note-changed", rawNote: value })
+						}
 						maxLength={12000}
-						disabled={processing}
+						disabled={processing || saving}
 						variant="minimal"
 						autoFocus={!result}
 					/>
@@ -429,7 +394,9 @@ export default function CapturePage() {
 							className="capture-process-action"
 							onAction={process}
 							pendingLabel="Ordenando…"
-							disabled={loading || !rawNote.trim()}
+							successLabel="Ordenado"
+							errorLabel="Reintentar"
+							disabled={loading || processing || saving || !rawNote.trim()}
 						>
 							Ordenar
 						</LoadingButton>
@@ -460,34 +427,39 @@ export default function CapturePage() {
 						approved={approved}
 						assignedAreas={assignedAreas}
 						rejectedItems={rejectedItems}
+						undoToken={undoToken}
 						editingItem={editingItem}
 						editedValues={editedValues}
 						projectAreas={projectAreas}
 						saving={saving}
 						onAssignedAreaChange={(kind, index, value) =>
-							setAssignedAreas((current) => ({
-								...current,
-								[`${kind}:${index}`]: value,
-							}))
+							dispatchReview({
+								type: "assign-area",
+								key: `${kind}:${index}`,
+								value,
+							})
 						}
 						onApprove={(key, checked) =>
-							setApproved((current) => ({ ...current, [key]: checked }))
+							dispatchReview({ type: "approve-suggestion", key, checked })
 						}
 						onProjectAreaChange={(key, value) =>
-							setProjectAreas((current) => ({ ...current, [key]: value }))
+							dispatchReview({ type: "assign-project-area", key, value })
 						}
-						onBeginEdit={(kind, index, value) => {
-							const key = `${kind}:${index}`;
-							setEditedValues((current) => ({ ...current, [key]: value }));
-							setEditingItem(key);
-						}}
+						onBeginEdit={(kind, index, value) =>
+							dispatchReview({
+								type: "begin-edit",
+								key: `${kind}:${index}`,
+								value,
+							})
+						}
 						onEditedValueChange={(key, value) =>
-							setEditedValues((current) => ({ ...current, [key]: value }))
+							dispatchReview({ type: "edit-value-changed", key, value })
 						}
 						onSaveEdit={saveEdit}
-						onCancelEdit={() => setEditingItem(null)}
-						onReject={(key) =>
-							setRejectedItems((current) => ({ ...current, [key]: true }))
+						onCancelEdit={() => dispatchReview({ type: "cancel-edit" })}
+						onReject={(key) => dispatchReview({ type: "reject-item", key })}
+						onUndoReject={(key, token) =>
+							dispatchReview({ type: "undo-reject", key, token })
 						}
 						onSave={saveResults}
 						onRetry={() => process(true)}

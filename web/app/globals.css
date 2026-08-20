@@ -274,6 +274,12 @@ a:active {
 .markdown-content h3 {
   @apply mt-6 mb-2 text-xl font-semibold;
 }
+.markdown-content .markdown-card-heading {
+  @apply mt-6 mb-2 text-xl font-semibold;
+}
+.capture-card-title {
+  @apply mt-0 mb-3 text-lg font-semibold;
+}
 .markdown-content p {
   @apply my-4 leading-7;
 }
@@ -319,6 +325,7 @@ a:active {
 .markdown-content-compact h1,
 .markdown-content-compact h2,
 .markdown-content-compact h3,
+.markdown-content-compact .markdown-card-heading,
 .markdown-content-compact p,
 .markdown-content-compact ul,
 .markdown-content-compact ol,
@@ -327,7 +334,11 @@ a:active {
 }
 .markdown-content-compact h1 { @apply text-xl; }
 .markdown-content-compact h2 { @apply text-lg; }
-.markdown-content-compact h3 { @apply text-base; }
+.markdown-content-compact h3,
+.markdown-content-compact .markdown-card-heading { @apply text-base; }
+.markdown-content > .markdown-card-heading:first-child {
+  @apply mt-0;
+}
 
 /* Authenticated shell. */
 .app-shell {
@@ -946,10 +957,6 @@ a:active {
   background: transparent;
   color: var(--text-secondary);
 }
-.capture-document-back:hover,
-.capture-document-menu:hover {
-  color: var(--text-primary);
-}
 .capture-document-context {
   display: inline-flex;
   align-items: center;
@@ -1024,9 +1031,6 @@ a:active {
   font-weight: 500;
   white-space: nowrap;
 }
-.capture-primary-action:hover:not(:disabled) {
-  opacity: 0.84;
-}
 .capture-primary-action:disabled {
   cursor: not-allowed;
   opacity: 0.5;
@@ -1088,9 +1092,6 @@ a:active {
   color: var(--text-secondary);
   font-size: 13px;
 }
-.capture-review-button:hover {
-  color: var(--text-primary);
-}
 .capture-results-wrapper {
   border-bottom: 1px solid var(--border);
   padding: 24px 0 32px;
@@ -1105,7 +1106,7 @@ a:active {
   padding: 16px;
   box-shadow: var(--shadow-sm);
 }
-.capture-group h2 {
+.capture-group h3 {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1113,7 +1114,7 @@ a:active {
   font-size: 14px;
   font-weight: 500;
 }
-.capture-group h2 svg {
+.capture-group h3 svg {
   color: var(--text-secondary);
 }
 .capture-result-card {
@@ -1149,9 +1150,6 @@ a:active {
   font-size: 11px;
   text-decoration: underline;
   text-underline-offset: 3px;
-}
-.capture-item-change:hover {
-  color: var(--text-primary);
 }
 .capture-suggestions {
   border-color: color-mix(in oklch, var(--warning) 32%, var(--border));
@@ -2771,7 +2769,7 @@ font-size: clamp(54px, 17vw, 84px);
 }
 
 .landing-v2 .landing-pixel-label {
-  font-family: var(--font-mono), ui-monospace, monospace;
+  font-family: var(--font-pixel), monospace;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.12em;
@@ -4156,7 +4154,7 @@ margin-left: 0;
   box-shadow: none;
 }
 
-.capture-workspace .capture-group h2 {
+.capture-workspace .capture-group h3 {
   color: var(--text-primary);
   font-size: 14px;
   font-weight: 500;
@@ -6097,3 +6095,337 @@ padding: 16px 0 28px;
   border-radius: var(--radius-sm);
   background: var(--bg-page);
 }
+
+/* Capture UX polish: resilient at narrow widths, calm under pressure. */
+.capture-workspace,
+.capture-workspace * {
+  box-sizing: border-box;
+}
+
+.capture-workspace {
+  min-width: 0;
+  padding-inline: clamp(0px, 2vw, 24px);
+}
+
+.capture-workspace .capture-minimal-shell,
+.capture-workspace .capture-minimal-form,
+.capture-workspace .capture-result-area,
+.capture-workspace .capture-results-wrapper,
+.capture-workspace .capture-results-grid,
+.capture-workspace .capture-group,
+.capture-workspace .capture-result-card,
+.capture-workspace .capture-suggestions,
+.capture-workspace .capture-suggestion-row {
+  min-width: 0;
+}
+
+.capture-workspace .capture-minimal-form {
+  transition: border-color 140ms ease-out, box-shadow 140ms ease-out;
+}
+
+.capture-workspace .markdown-minimal-textarea {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.capture-workspace .capture-minimal-actions {
+  min-height: 56px;
+  align-items: center;
+  gap: 12px;
+}
+
+.capture-workspace .capture-process-action,
+.capture-workspace .capture-save-action {
+  min-height: 44px;
+  transition: background-color 140ms ease-out, border-color 140ms ease-out,
+color 140ms ease-out, opacity 140ms ease-out, transform 120ms ease-out;
+}
+
+.capture-workspace .capture-process-action:active:not(:disabled),
+.capture-workspace .capture-save-action:active:not(:disabled),
+.capture-workspace .capture-item-actions button:active:not(:disabled),
+.capture-workspace .capture-item-edit button:active:not(:disabled),
+.capture-workspace .capture-item-discarded button:active:not(:disabled),
+.capture-workspace .capture-empty-result button:active:not(:disabled),
+.capture-workspace .capture-save-row button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.capture-workspace :is(button, select, input, textarea):focus-visible {
+  outline: 2px solid var(--flow-accent);
+  outline-offset: 2px;
+}
+
+.capture-workspace :is(button, select):disabled,
+.capture-workspace textarea:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.capture-workspace .markdown-editor-toolbar-document {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+
+.capture-workspace .markdown-editor-toolbar-document > div {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.capture-workspace .markdown-toolbar-button {
+  min-width: 44px;
+  min-height: 44px;
+  transition: background-color 120ms ease-out, color 120ms ease-out,
+transform 120ms ease-out;
+}
+
+.capture-workspace .markdown-toolbar-button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.capture-workspace .capture-result-area {
+  overflow-wrap: anywhere;
+}
+
+.capture-workspace .capture-result-summary {
+  min-height: 52px;
+}
+
+.capture-workspace .capture-result-summary > div {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.capture-workspace .capture-result-summary strong {
+  overflow-wrap: anywhere;
+}
+
+.capture-workspace .capture-group {
+  padding: clamp(12px, 2vw, 20px);
+}
+
+.capture-workspace .capture-group-heading {
+  display: flex;
+  min-height: 28px;
+  align-items: center;
+  gap: 8px;
+}
+
+.capture-workspace .capture-result-card {
+  overflow-wrap: anywhere;
+  padding: clamp(12px, 2vw, 16px);
+}
+
+.capture-workspace .capture-item-destination,
+.capture-workspace .capture-item-actions,
+.capture-workspace .capture-item-edit,
+.capture-workspace .capture-item-discarded {
+  min-width: 0;
+}
+
+.capture-workspace .capture-item-destination {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.capture-workspace .capture-item-destination > span {
+  min-width: 0;
+  flex: 1 1 140px;
+}
+
+.capture-workspace .capture-item-destination .select,
+.capture-workspace .capture-suggestion-row select {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.capture-workspace .capture-touch-select,
+.capture-workspace .capture-review-disclosure button,
+.capture-workspace .capture-retry-action {
+  min-height: 44px;
+}
+
+.capture-workspace .capture-item-change,
+.capture-workspace .capture-item-actions button,
+.capture-workspace .capture-item-edit button,
+.capture-workspace .capture-item-discarded button {
+  min-height: 44px;
+  padding-inline: 10px;
+  transition: color 120ms ease-out, background-color 120ms ease-out,
+opacity 120ms ease-out, transform 120ms ease-out;
+}
+
+.capture-workspace .capture-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.capture-workspace .capture-item-edit textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.capture-workspace .capture-item-discarded {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.capture-workspace .capture-item-discarded span {
+  min-width: 0;
+  flex: 1 1 150px;
+}
+
+.capture-workspace .capture-suggestions {
+  padding: clamp(12px, 2vw, 20px);
+}
+
+.capture-workspace .capture-suggestion-row {
+  padding: clamp(10px, 2vw, 16px);
+}
+
+.capture-workspace .capture-suggestion-row label {
+  min-width: 0;
+  align-items: flex-start;
+}
+
+.capture-workspace .capture-suggestion-row label > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.capture-workspace .capture-suggestion-row input[type="checkbox"] {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin-top: 0;
+}
+
+.capture-workspace .capture-save-row {
+  min-height: 48px;
+  margin-top: 4px;
+}
+
+.capture-workspace .capture-save-row .capture-save-action {
+  min-width: min(100%, 190px);
+}
+
+.capture-workspace .capture-empty-result {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  min-height: 112px;
+  align-content: center;
+}
+
+@media (min-width: 768px) and (max-width: 1099px) {
+  .capture-workspace .capture-results-grid {
+grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .capture-workspace .capture-process-action:hover:not(:disabled),
+  .capture-workspace .capture-save-action:hover:not(:disabled) {
+opacity: 0.9;
+  }
+
+  .capture-workspace .capture-item-change:hover:not(:disabled),
+  .capture-workspace .capture-review-button:hover:not(:disabled),
+  .capture-workspace .capture-document-back:hover:not(:disabled),
+  .capture-workspace .capture-document-menu:hover:not(:disabled) {
+color: var(--text-primary);
+  }
+}
+
+@media (max-width: 767px) {
+  .capture-workspace {
+padding-inline: 0;
+  }
+
+  .capture-workspace .capture-minimal-form {
+border-radius: 18px;
+  }
+
+  .capture-workspace .markdown-minimal-textarea {
+min-height: 136px;
+padding: 18px 18px 8px;
+font-size: 16px;
+  }
+
+  .capture-workspace .capture-minimal-actions {
+justify-content: stretch;
+padding: 8px 10px 10px;
+  }
+
+  .capture-workspace .capture-minimal-actions .capture-process-action,
+  .capture-workspace .capture-save-row .capture-save-action {
+width: 100%;
+  }
+
+  .capture-workspace .capture-result-area {
+margin-top: 36px;
+  }
+
+  .capture-workspace .capture-result-summary {
+gap: 8px;
+padding-block: 12px;
+  }
+
+  .capture-workspace .capture-results-wrapper {
+padding-top: 16px;
+  }
+
+  .capture-workspace .capture-item-actions button,
+  .capture-workspace .capture-item-edit button,
+  .capture-workspace .capture-item-discarded button {
+flex: 1 1 140px;
+  }
+}
+
+@media (max-width: 360px) {
+  .capture-workspace .capture-group,
+  .capture-workspace .capture-suggestions {
+padding-inline: 10px;
+  }
+
+  .capture-workspace .capture-result-card {
+padding-inline: 10px;
+  }
+
+  .capture-workspace .capture-item-actions button,
+  .capture-workspace .capture-item-edit button,
+  .capture-workspace .capture-item-discarded button {
+flex-basis: 100%;
+  }
+}
+
+    @media (prefers-reduced-motion: reduce) {
+      .capture-workspace .capture-result-area {
+    animation: none;
+      }
+
+      .capture-workspace :is(.capture-minimal-form, .capture-process-action,
+    .capture-save-action, .capture-item-change, .capture-item-actions button,
+    .capture-item-edit button, .capture-item-discarded button,
+    .capture-empty-result button, .capture-review-disclosure button,
+    .markdown-toolbar-button) {
+    transition: none;
+      }
+
+      /* Capture also uses active/whileTap transforms; reduced motion must remove
+         the visual displacement, not only its transition. */
+      .capture-workspace *,
+      .capture-workspace *::before,
+      .capture-workspace *::after {
+    transform: none !important;
+      }
+    }

@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import type { OpenRouterSettings } from "@/types";
+import { DEFAULT_OPENROUTER_MODEL } from "@/lib/ai/models";
 import { InlineValidation } from "@/components/interior/inline-validation";
 import { LoadingButton } from "@/components/interior/loading-button";
 import { SkeletonSwap } from "@/components/interior/skeleton-swap";
 
 export default function SettingsPage() {
 	const [apiKey, setApiKey] = useState("");
-	const [model, setModel] = useState("openai/gpt-4.1-nano");
+	const [model, setModel] = useState(DEFAULT_OPENROUTER_MODEL);
 	const [configured, setConfigured] = useState(false);
 	const [loading, setLoading] = useState(true);
 	const [saving, setSaving] = useState(false);
@@ -38,12 +39,11 @@ export default function SettingsPage() {
 
 	async function save() {
 		if (!model.trim() || (!configured && !apiKey.trim())) {
-			setError(
-				configured
-					? "El modelo es necesario."
-					: "La clave de API y el modelo son necesarios.",
-			);
-			return;
+			const message = configured
+				? "El modelo es necesario."
+				: "La clave de API y el modelo son necesarios.";
+			setError(message);
+			throw new Error(message);
 		}
 		setSaving(true);
 		setError("");
@@ -68,8 +68,10 @@ export default function SettingsPage() {
 					? caught.message
 					: "No pudimos guardar la configuración.",
 			);
+			throw caught;
+		} finally {
+			setSaving(false);
 		}
-		setSaving(false);
 	}
 
 	async function disconnect() {
@@ -85,7 +87,7 @@ export default function SettingsPage() {
 				throw new Error(body.error || "No pudimos desconectar OpenRouter.");
 			setConfigured(false);
 			setApiKey("");
-			setModel("openai/gpt-4.1-nano");
+			setModel(DEFAULT_OPENROUTER_MODEL);
 			setSuccess("OpenRouter desconectado.");
 		} catch (caught) {
 			setError(
@@ -93,8 +95,10 @@ export default function SettingsPage() {
 					? caught.message
 					: "No pudimos desconectar OpenRouter.",
 			);
+			throw caught;
+		} finally {
+			setSaving(false);
 		}
-		setSaving(false);
 	}
 
 	return (
@@ -136,7 +140,7 @@ export default function SettingsPage() {
 						className="space-y-5 rounded-box border border-base-300 bg-base-100 p-6 shadow-sm"
 						onSubmit={(event) => {
 							event.preventDefault();
-							void save();
+							void save().catch(() => undefined);
 						}}
 					>
 						<div>
@@ -177,7 +181,7 @@ export default function SettingsPage() {
 							validate={(value) =>
 								value.trim() ? null : "El modelo es necesario."
 							}
-							hint="Ejemplo: openai/gpt-4.1-nano"
+							hint="Ejemplo: openai/gpt-5-nano"
 						/>
 						<div className="flex flex-wrap justify-between gap-3">
 							<LoadingButton

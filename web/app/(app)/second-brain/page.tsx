@@ -110,18 +110,19 @@ export default function SecondBrainPage() {
 													: "Global"}
 											</span>
 											<span>
-												{new Date(entry.updated_at).toLocaleDateString(
-													"es-MX",
-													{
-														day: "numeric",
-														month: "short",
-													},
-												)}
+												{new Date(entry.updated_at).toLocaleDateString("es-MX", {
+													day: "numeric",
+													month: "short",
+												})}
 											</span>
 										</div>
 										<h2>{entry.title || "Sin título"}</h2>
 										<div className="knowledge-library-item-preview">
-											<MarkdownRenderer content={entry.content} compact />
+											<MarkdownRenderer
+												content={entry.content}
+												compact
+												headingMode="card"
+											/>
 										</div>
 										{entry.tags.length > 0 && (
 											<div className="knowledge-library-item-tags">

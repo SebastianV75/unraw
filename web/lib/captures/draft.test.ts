@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-	CAPTURE_DRAFT_VERSION,
-	readCaptureDraft,
-} from "@/lib/captures/draft";
+import { CAPTURE_DRAFT_VERSION, readCaptureDraft } from "@/lib/captures/draft";
 
 describe("capture drafts", () => {
 	it("recovers a versioned draft", () => {
@@ -19,7 +16,10 @@ describe("capture drafts", () => {
 		};
 
 		expect(readCaptureDraft(JSON.stringify(draft))).toEqual(draft);
-		expect(readCaptureDraft(JSON.stringify({ ...draft, version: 2 }))).toMatchObject({
+		expect(JSON.stringify(draft)).not.toContain("undoToken");
+		expect(
+			readCaptureDraft(JSON.stringify({ ...draft, version: 2 })),
+		).toMatchObject({
 			rawNote: JSON.stringify({ ...draft, version: 2 }),
 			idempotencyKey: "",
 		});
