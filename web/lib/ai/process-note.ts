@@ -136,6 +136,14 @@ export const processNoteOutputSchema = z.object({
 
 export type ProcessNoteInput = z.infer<typeof processNoteInputSchema>;
 export type ProcessNoteOutput = z.infer<typeof processNoteOutputSchema>;
+export type ProcessNoteTelemetry = {
+	onModelComplete?: (details: {
+		modelLatencyMs: number;
+		usagePromptTokens?: number;
+		usageCompletionTokens?: number;
+		usageTotalTokens?: number;
+	}) => void;
+};
 type ProcessNoteContext = NonNullable<ProcessNoteInput["user_context"]>;
 
 function localNow(timezone: string) {
@@ -262,11 +270,12 @@ export async function processNote({
 	apiKey,
 	baseURL,
 	model,
+	onModelComplete,
 }: ProcessNoteInput & {
 	apiKey: string;
 	baseURL?: string;
 	model: string;
-}): Promise<ProcessNoteOutput> {
+} & ProcessNoteTelemetry): Promise<ProcessNoteOutput> {
 	const input = processNoteInputSchema.parse({ raw_note, user_context });
 	if (!apiKey)
 		throw new ProcessNoteError("AI processing is not configured.", 503);
@@ -275,6 +284,7 @@ export async function processNote({
 	const client = new OpenAI({ apiKey, ...(baseURL ? { baseURL } : {}) });
 	const isGpt5Model = model.split("/").pop()?.startsWith("gpt-5") ?? false;
 	let response;
+	const modelStartedAt = performance.now();
 	try {
 		response = await client.chat.completions.create({
 			model,
@@ -292,6 +302,12 @@ export async function processNote({
 		throw new ProcessNoteError("The AI service could not process this note.");
 	}
 
+	onModelComplete?.({
+		modelLatencyMs: performance.now() - modelStartedAt,
+		usagePromptTokens: response.usage?.prompt_tokens,
+		usageCompletionTokens: response.usage?.completion_tokens,
+		usageTotalTokens: response.usage?.total_tokens,
+	});
 	const content = response.choices[0]?.message?.content;
 	if (!content)
 		throw new ProcessNoteError("The AI service returned an empty result.");
