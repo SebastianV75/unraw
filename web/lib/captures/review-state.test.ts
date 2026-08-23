@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CaptureDraft } from "@/lib/captures/draft";
+import { hashCaptureNote } from "@/lib/captures/draft";
 import {
 	captureReviewReducer,
 	getCaptureReviewState,
@@ -37,6 +38,7 @@ const draft: CaptureDraft = {
 	rawNote: "Nota recuperada",
 	idempotencyKey: "capture-key",
 	result,
+	processedNoteHash: hashCaptureNote("Nota recuperada"),
 	approved: { "new_area:Trabajo": true },
 	assignedAreas: { "task:0": "area-id" },
 	rejectedItems: { "idea:0": true },
@@ -48,6 +50,8 @@ const transientState = {
 	...initialCaptureReviewState,
 	rawNote: "Nota en curso",
 	result,
+	resultNoteHash: hashCaptureNote("Nota en curso"),
+	isStale: false,
 	approved: { suggestion: true },
 	assignedAreas: { "task:0": "old-area" },
 	rejectedItems: { "idea:0": true },
@@ -71,17 +75,15 @@ describe("capture review reducer", () => {
 		const state = captureReviewReducer(transientState, {
 			type: "processing-started",
 		});
-		expect(state).toEqual({
-			rawNote: transientState.rawNote,
-			result: null,
-			approved: {},
-			assignedAreas: {},
-			rejectedItems: {},
-			undoToken: null,
-			editingItem: null,
-			editedValues: {},
-			projectAreas: {},
+		expect(state).toEqual(transientState);
+	});
+
+	it("marks a processed review stale when the note changes", () => {
+		const state = captureReviewReducer(transientState, {
+			type: "raw-note-changed",
+			rawNote: "Nota diferente",
 		});
+		expect(state.isStale).toBe(true);
 	});
 
 	it("keeps rawNote and only clears review UI when processing finishes", () => {
@@ -92,6 +94,8 @@ describe("capture review reducer", () => {
 		expect(state).toEqual({
 			rawNote: transientState.rawNote,
 			result,
+			resultNoteHash: hashCaptureNote(transientState.rawNote),
+			isStale: false,
 			approved: {},
 			assignedAreas: {},
 			rejectedItems: {},
@@ -176,6 +180,8 @@ describe("capture review reducer", () => {
 			approved: draft.approved,
 			assignedAreas: draft.assignedAreas,
 			rejectedItems: draft.rejectedItems,
+			resultNoteHash: draft.processedNoteHash,
+			isStale: false,
 			undoToken: null,
 			editingItem: null,
 			editedValues: draft.editedValues,
@@ -281,13 +287,45 @@ describe("capture review reducer", () => {
 		expect(savedEdit.undoToken).toBeNull();
 		expect(
 			captureReviewReducer(rejected, { type: "processing-started" }).undoToken,
-		).toBeNull();
+		).toBe(rejected.undoToken);
 		expect(
-			captureReviewReducer(rejected, { type: "processed", result }).undoToken,
+			captureReviewReducer(rejected, {
+				type: "processed",
+				result,
+				noteHash: hashCaptureNote(rejected.rawNote),
+			}).undoToken,
 		).toBeNull();
 		expect(
 			captureReviewReducer(rejected, { type: "reset-after-save" }).undoToken,
 		).toBeNull();
+	});
+
+	it("keeps the complete review snapshot when processing fails", () => {
+		const beforeFailure = captureReviewReducer(transientState, {
+			type: "processing-started",
+		});
+		const afterFailure = captureReviewReducer(beforeFailure, {
+			type: "raw-note-changed",
+			rawNote: "Nota en curso editada",
+		});
+		expect(afterFailure).toMatchObject({
+			result,
+			assignedAreas: transientState.assignedAreas,
+			rejectedItems: transientState.rejectedItems,
+			editedValues: transientState.editedValues,
+			undoToken: null,
+			isStale: true,
+		});
+	});
+
+	it("marks a legacy v1 result without a hash as stale", () => {
+		const state = captureReviewReducer(transientState, {
+			type: "hydrate-draft",
+			draft: { ...draft, processedNoteHash: undefined },
+		});
+		expect(state.result).toBe(result);
+		expect(state.resultNoteHash).toBeNull();
+		expect(state.isStale).toBe(true);
 	});
 
 	it("resets the review after a successful save", () => {

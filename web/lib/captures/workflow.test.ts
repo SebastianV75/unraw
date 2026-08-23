@@ -6,8 +6,19 @@ import {
 	getCaptureShortcutAction,
 	initialCaptureWorkflowState,
 } from "@/lib/captures/workflow";
+import {
+	captureReviewReducer,
+	initialCaptureReviewState,
+	type CaptureReviewState,
+} from "@/lib/captures/review-state";
 
 const result = { tasks: [], ideas: [], second_brain: [], suggestions: [] };
+const reviewResult = {
+tasks: [{ title: "Tarea" }],
+ideas: [],
+second_brain: [],
+suggestions: [],
+} as CaptureOutput;
 
 describe("capture workflow reducer", () => {
 	it("moves through processing and reviewing without mixed pending states", () => {
@@ -42,6 +53,52 @@ describe("capture workflow reducer", () => {
 			result,
 			error: "Falló",
 		});
+	});
+
+	it("returns to review after processing fails with a previous result", () => {
+		const reviewing = {
+			...initialCaptureWorkflowState,
+			phase: "reviewing" as const,
+			result,
+		};
+		const processing = captureWorkflowReducer(reviewing, { type: "PROCESS_STARTED" });
+		const failed = captureWorkflowReducer(processing, {
+			type: "PROCESS_FAILED",
+			message: "Falló el reproceso",
+		});
+		expect(failed).toMatchObject({ phase: "reviewing", result, error: "Falló el reproceso" });
+	});
+
+	it("stays editing after processing fails without a previous result", () => {
+		const failed = captureWorkflowReducer(
+			{ ...initialCaptureWorkflowState, phase: "processing" },
+			{ type: "PROCESS_FAILED", message: "Falló" },
+		);
+		expect(failed).toMatchObject({ phase: "editing", result: null });
+	});
+
+	it("keeps review and workflow snapshots aligned across a failed reprocess", () => {
+		const reviewBefore = {
+			...({
+				...captureReviewReducer(
+					{ ...initialCaptureReviewState, result: reviewResult } as CaptureReviewState,
+					{ type: "begin-edit", key: "task:0", value: "Editada" },
+				),
+				assignedAreas: { "task:0": "area" },
+				rejectedItems: { "task:0": true },
+				undoToken: { key: "task:0", previous: { present: false, value: undefined } },
+			} satisfies CaptureReviewState),
+		};
+		const reviewAfter = captureReviewReducer(reviewBefore, { type: "processing-started" });
+		const workflowAfter = captureWorkflowReducer(
+			captureWorkflowReducer(
+				{ ...initialCaptureWorkflowState, phase: "reviewing", result: reviewResult },
+				{ type: "PROCESS_STARTED" },
+			),
+			{ type: "PROCESS_FAILED", message: "Falló" },
+		);
+		expect(reviewAfter).toEqual(reviewBefore);
+		expect(workflowAfter).toMatchObject({ phase: "reviewing", result: reviewResult });
 	});
 
 	it("clears the result after a successful save", () => {
@@ -120,6 +177,7 @@ describe("capture save eligibility", () => {
 		rejectedItems: {},
 		approvedSuggestionCount: 0,
 		isEditingItem: false,
+		isStale: false,
 	};
 
 	it("requires review, guardable content, and no open editor", () => {
@@ -142,6 +200,10 @@ describe("capture save eligibility", () => {
 				} as CaptureOutput,
 			}),
 		).toBe(false);
+	});
+
+	it("blocks stale results", () => {
+		expect(canSaveCapture({ ...base, isStale: true })).toBe(false);
 	});
 });
 

@@ -1,4 +1,4 @@
-import type { CaptureDraft } from "@/lib/captures/draft";
+import { hashCaptureNote, type CaptureDraft } from "@/lib/captures/draft";
 import type { CaptureAssignments, CaptureOutput } from "@/types";
 
 export type CaptureUndoToken = {
@@ -9,6 +9,8 @@ export type CaptureUndoToken = {
 export type CaptureReviewState = {
 	rawNote: string;
 	result: CaptureOutput | null;
+	resultNoteHash: string | null;
+	isStale: boolean;
 	approved: Record<string, boolean>;
 	assignedAreas: CaptureAssignments;
 	rejectedItems: Record<string, boolean>;
@@ -21,6 +23,8 @@ export type CaptureReviewState = {
 export const initialCaptureReviewState: CaptureReviewState = {
 	rawNote: "",
 	result: null,
+	resultNoteHash: null,
+	isStale: false,
 	approved: {},
 	assignedAreas: {},
 	rejectedItems: {},
@@ -34,7 +38,7 @@ export type CaptureReviewAction =
 	| { type: "hydrate-draft"; draft: CaptureDraft }
 	| { type: "raw-note-changed"; rawNote: string }
 	| { type: "processing-started" }
-	| { type: "processed"; result: CaptureOutput }
+	| { type: "processed"; result: CaptureOutput; noteHash?: string }
 	| { type: "approve-suggestion"; key: string; checked: boolean }
 	| { type: "assign-area"; key: string; value: string | null }
 	| { type: "assign-project-area"; key: string; value: string }
@@ -89,6 +93,13 @@ export function captureReviewReducer(
 			return {
 				rawNote: action.draft.rawNote,
 				result: action.draft.result,
+				resultNoteHash: action.draft.processedNoteHash ?? null,
+				// A v1 draft without a hash can be recovered, but its result cannot
+				// be proven to belong to this note and must be reprocessed.
+				isStale:
+					Boolean(action.draft.result) &&
+					(!action.draft.processedNoteHash ||
+						action.draft.processedNoteHash !== hashCaptureNote(action.draft.rawNote)),
 				approved: action.draft.approved,
 				assignedAreas: action.draft.assignedAreas,
 				rejectedItems: action.draft.rejectedItems,
@@ -100,11 +111,23 @@ export function captureReviewReducer(
 		case "raw-note-changed":
 			return state.rawNote === action.rawNote
 				? state
-				: invalidateUndo({ ...state, rawNote: action.rawNote });
+				: invalidateUndo({
+						...state,
+						rawNote: action.rawNote,
+						isStale:
+							state.result !== null &&
+							hashCaptureNote(action.rawNote) !== state.resultNoteHash,
+					});
 		case "processing-started":
-			return clearReview(state);
+			// Keep the complete review snapshot visible while the replacement is pending.
+			return state;
 		case "processed":
-			return { ...clearReview(state), result: action.result };
+			return {
+				...clearReview(state),
+				result: action.result,
+				resultNoteHash: action.noteHash ?? hashCaptureNote(state.rawNote),
+				isStale: false,
+			};
 		case "approve-suggestion":
 			if (state.approved[action.key] === action.checked) return state;
 			return invalidateUndo({

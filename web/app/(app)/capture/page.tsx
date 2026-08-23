@@ -10,6 +10,7 @@ import {
 	readCaptureDraft,
 	writeCaptureDraft,
 	clearCaptureDraft,
+	hashCaptureNote,
 } from "@/lib/captures/draft";
 import { parseSaveCaptureResult } from "@/lib/captures/receipt";
 import { runSingleFlight } from "@/lib/captures/single-flight";
@@ -48,6 +49,8 @@ export default function CapturePage() {
 		editingItem,
 		editedValues,
 		projectAreas,
+		resultNoteHash,
+		isStale,
 	} = review;
 	const [areas, setAreas] = useState<Area[]>([]);
 	const [projects, setProjects] = useState<Project[]>([]);
@@ -97,6 +100,7 @@ export default function CapturePage() {
 			rawNote,
 			idempotencyKey: draftKey,
 			result,
+			processedNoteHash: resultNoteHash,
 			approved,
 			assignedAreas,
 			rejectedItems,
@@ -113,6 +117,7 @@ export default function CapturePage() {
 		rejectedItems,
 		editedValues,
 		projectAreas,
+		resultNoteHash,
 	]);
 
 	useEffect(() => {
@@ -203,6 +208,7 @@ export default function CapturePage() {
 				captureKeyRawNote.current = rawNote;
 			}
 			dispatchWorkflow({ type: "PROCESS_STARTED" });
+			const noteHash = hashCaptureNote(rawNote);
 			dispatchReview({ type: "processing-started" });
 			try {
 				const response = await fetch("/api/ai/process-note", {
@@ -218,7 +224,7 @@ export default function CapturePage() {
 				};
 				if (!response.ok)
 					throw new Error(body.error || "No pudimos procesar la nota.");
-				dispatchReview({ type: "processed", result: body });
+				dispatchReview({ type: "processed", result: body, noteHash });
 				dispatchWorkflow({ type: "PROCESS_SUCCEEDED", result: body });
 			} catch (caught) {
 				dispatchWorkflow({
@@ -245,10 +251,15 @@ export default function CapturePage() {
 		rejectedItems,
 		approvedSuggestionCount,
 		isEditingItem: Boolean(editingItem),
+		isStale,
 	});
 
 	async function saveResults(): Promise<void> {
-		if (!canSave || !result) return;
+		// Defensive check: button and shortcut are not the only possible callers.
+		// Reject blocked actions so a LoadingButton can never announce success.
+		if (!canSave || !result || isStale || resultNoteHash !== hashCaptureNote(rawNote)) {
+			throw new Error("La nota cambió. Vuelve a ordenar antes de guardar.");
+		}
 		return runSingleFlight(saveFlight, async () => {
 			dispatchWorkflow({ type: "SAVE_STARTED" });
 			try {
@@ -324,6 +335,7 @@ export default function CapturePage() {
 					rawNote,
 					idempotencyKey: key,
 					result,
+					processedNoteHash: resultNoteHash,
 					approved,
 					assignedAreas,
 					rejectedItems,
@@ -407,6 +419,7 @@ export default function CapturePage() {
 				hasResult: Boolean(result),
 				isEditingItem: Boolean(editingItem),
 				canSave,
+				isStale,
 			});
 			if (!action) return;
 			event.preventDefault();
@@ -460,6 +473,11 @@ export default function CapturePage() {
 						</LoadingButton>
 					</div>
 				</form>
+				{isStale && !processing && (
+					<p className="capture-alert capture-alert-error" role="alert">
+						La nota cambió. Vuelve a ordenar para actualizar los resultados.
+					</p>
+				)}
 				{processing && (
 					<p className="capture-ai-status" role="status" aria-live="polite">
 						Estamos ordenando tu captura…
@@ -489,7 +507,8 @@ export default function CapturePage() {
 						editingItem={editingItem}
 						editedValues={editedValues}
 						projectAreas={projectAreas}
-						saving={saving}
+						saving={saving || processing}
+						canSave={canSave}
 						onAssignedAreaChange={(kind, index, value) =>
 							dispatchReview({
 								type: "assign-area",
@@ -519,7 +538,7 @@ export default function CapturePage() {
 						onUndoReject={(key, token) =>
 							dispatchReview({ type: "undo-reject", key, token })
 						}
-						onSave={() => (canSave ? saveResults() : Promise.resolve())}
+						onSave={saveResults}
 						onRetry={() => process(true)}
 					/>
 				)}

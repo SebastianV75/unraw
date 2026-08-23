@@ -49,6 +49,7 @@ type ReviewProps = {
 	editedValues: Record<string, string>;
 	projectAreas: Record<string, string>;
 	saving: boolean;
+	canSave: boolean;
 	undoToken: CaptureUndoToken | null;
 	onAssignedAreaChange: (
 		kind: string,
@@ -106,6 +107,7 @@ export function CaptureReviewPanel({
 	editedValues,
 	projectAreas,
 	saving,
+	canSave,
 	undoToken,
 	onAssignedAreaChange,
 	onApprove,
@@ -495,7 +497,7 @@ export function CaptureReviewPanel({
 						<LoadingButton
 							className="capture-save-action"
 							onAction={onSave}
-							disabled={saving || emptyAfterManualDiscard}
+							disabled={saving || !canSave || emptyAfterManualDiscard}
 							pendingLabel="Guardando…"
 							successLabel="Guardado"
 							errorLabel="Reintentar"

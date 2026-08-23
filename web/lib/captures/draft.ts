@@ -10,6 +10,8 @@ export type CaptureDraft = {
 	version: typeof CAPTURE_DRAFT_VERSION;
 	rawNote: string;
 	idempotencyKey: string;
+	/** Hash of the exact note that produced result. Optional for v1 drafts. */
+	processedNoteHash?: string | null;
 	result: CaptureOutput | null;
 	approved: Record<string, boolean>;
 	assignedAreas: CaptureAssignments;
@@ -20,6 +22,22 @@ export type CaptureDraft = {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+export function hashCaptureNote(note: string): string {
+	// Keep this synchronous for reducer/UI use, but use four independent lanes
+	// rather than a single 32-bit hash. The digest binds a review to its note;
+	// it is not intended to expose the note or provide password-grade hashing.
+	const lanes = [2166136261, 2246822519, 3266489917, 668265263];
+	const primes = [16777619, 3266489917, 668265263, 374761393];
+	for (let index = 0; index < note.length; index += 1) {
+		const code = note.charCodeAt(index);
+		for (let lane = 0; lane < lanes.length; lane += 1) {
+			lanes[lane] ^= code + lane * 31;
+			lanes[lane] = Math.imul(lanes[lane], primes[lane]);
+		}
+	}
+	return lanes.map((lane) => (lane >>> 0).toString(16).padStart(8, "0")).join("");
 }
 
 function isCaptureOutput(value: unknown): value is CaptureOutput {
@@ -85,6 +103,9 @@ export function readCaptureDraft(value: string | null): CaptureDraft | null {
 			typeof parsed.rawNote !== "string" ||
 			typeof parsed.idempotencyKey !== "string" ||
 			(parsed.result !== null && !isCaptureOutput(parsed.result)) ||
+			(parsed.processedNoteHash !== undefined &&
+				parsed.processedNoteHash !== null &&
+				typeof parsed.processedNoteHash !== "string") ||
 			!isBooleanRecord(parsed.approved) ||
 			!isNullableStringRecord(parsed.assignedAreas) ||
 			!isBooleanRecord(parsed.rejectedItems) ||
@@ -93,6 +114,7 @@ export function readCaptureDraft(value: string | null): CaptureDraft | null {
 		) {
 			return createLegacyDraft(value);
 		}
+		// SAFETY: the runtime guards above establish the persisted draft shape.
 		return parsed as unknown as CaptureDraft;
 	} catch {
 		return createLegacyDraft(value);

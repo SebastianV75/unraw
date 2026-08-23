@@ -77,7 +77,8 @@ export function captureWorkflowReducer(
 			return {
 				...state,
 				phase: "processing",
-				result: null,
+				// Keep the previous result available while a replacement is pending.
+				result: state.result,
 				error: "",
 				success: "",
 			};
@@ -88,7 +89,12 @@ export function captureWorkflowReducer(
 				result: action.result,
 			};
 		case "PROCESS_FAILED":
-			return { ...state, phase: "editing", error: action.message };
+			return {
+				...state,
+				// A failed replacement must not discard a previously reviewable result.
+				phase: state.result ? "reviewing" : "editing",
+				error: action.message,
+			};
 		case "SAVE_STARTED":
 			return { ...state, phase: "saving", error: "", success: "" };
 		case "SAVE_SUCCEEDED":
@@ -109,14 +115,16 @@ export function canSaveCapture({
 	rejectedItems,
 	approvedSuggestionCount,
 	isEditingItem,
+	isStale = false,
 }: {
 	phase: CaptureWorkflowPhase;
 	result: CaptureOutput | null;
 	rejectedItems: Record<string, boolean>;
 	approvedSuggestionCount: number;
 	isEditingItem: boolean;
+	isStale?: boolean;
 }): boolean {
-	if (phase !== "reviewing" || !result || isEditingItem) return false;
+	if (phase !== "reviewing" || !result || isEditingItem || isStale) return false;
 	const originallyEmpty =
 		result.tasks.length === 0 &&
 		result.ideas.length === 0 &&
@@ -139,15 +147,23 @@ export function getCaptureShortcutAction({
 	hasResult,
 	isEditingItem,
 	canSave,
+	isStale = false,
 }: {
 	phase: CaptureWorkflowPhase;
 	hasNote: boolean;
 	hasResult: boolean;
 	isEditingItem: boolean;
 	canSave: boolean;
+	isStale?: boolean;
 }): CaptureShortcutAction {
 	if (phase === "editing" && hasNote && !hasResult) return "process";
-	if (phase === "reviewing" && hasResult && !isEditingItem && canSave)
+	if (
+		phase === "reviewing" &&
+		hasResult &&
+		!isEditingItem &&
+		!isStale &&
+		canSave
+	)
 		return "save";
 	return null;
 }
