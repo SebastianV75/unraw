@@ -470,7 +470,7 @@ a:active {
   padding: 32px 48px;
 }
 .app-shell-mobile-header,
-.app-shell-mobile-menu {
+.app-shell-mobile-nav {
   display: none;
 }
 
@@ -1183,6 +1183,10 @@ a:active {
 }
 
 @media (max-width: 767px) {
+  html {
+    scroll-padding-bottom: calc(104px + env(safe-area-inset-bottom));
+  }
+
   .app-shell {
     display: block;
   }
@@ -1226,31 +1230,114 @@ a:active {
     min-height: 44px;
     background: transparent;
   }
-  .app-shell-mobile-menu {
+  .app-shell-mobile-nav {
     position: fixed;
     z-index: 30;
-    inset: 60px 0 auto;
-    display: flex;
-    max-height: calc(100dvh - 60px);
+    right: calc(12px + env(safe-area-inset-right));
+    bottom: calc(12px + env(safe-area-inset-bottom));
+    left: calc(12px + env(safe-area-inset-left));
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1fr);
+    align-items: end;
+    gap: 8px;
+    pointer-events: none;
+  }
+  .app-shell-mobile-nav-item,
+  .app-shell-mobile-more {
+    position: relative;
+    min-width: 0;
+  }
+  .app-shell-mobile-more {
+    pointer-events: auto;
+  }
+  .app-shell-mobile-nav-item {
+    display: inline-flex;
+    min-height: 54px;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: color-mix(in oklch, var(--bg-surface) 96%, transparent);
+    box-shadow: var(--shadow-md);
+    color: var(--text-secondary);
     flex-direction: column;
-    gap: 16px;
-    overflow-y: auto;
-    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1;
+    pointer-events: auto;
+    backdrop-filter: blur(14px);
+  }
+  .app-shell-mobile-nav-item:hover,
+  .app-shell-mobile-nav-item.is-active {
+    border-color: var(--border-strong);
+    color: var(--text-primary);
+  }
+  .app-shell-mobile-nav-item.is-active {
+    background: var(--bg-hover);
+  }
+  .app-shell-mobile-nav-item.is-primary {
+    min-height: 62px;
+    margin-top: -12px;
+    border-color: var(--accent);
+    border-radius: 16px;
+    background: var(--accent);
+    color: var(--accent-fg);
+  }
+  .app-shell-mobile-nav-item.is-primary:hover,
+  .app-shell-mobile-nav-item.is-primary.is-active {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--accent-fg);
+    opacity: 0.88;
+  }
+  .app-shell-mobile-more-trigger {
+    width: 100%;
+    cursor: pointer;
+  }
+  .app-shell-mobile-more-menu {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 10px);
+    display: grid;
+    width: min(232px, calc(100vw - 24px));
+    gap: 2px;
+    border: 1px solid var(--border-strong);
+    border-radius: 14px;
     background: var(--bg-surface);
-    padding: 16px;
-    box-shadow: var(--shadow-sm);
+    padding: 6px;
+    pointer-events: auto;
+    box-shadow: 0 10px 30px rgb(0 0 0 / 14%), var(--shadow-md);
   }
-  .app-shell-mobile-menu .app-shell-nav-item {
+  .app-shell-mobile-more-item {
+    display: flex;
     min-height: 44px;
+    align-items: center;
+    gap: 10px;
+    border-radius: 9px;
+    color: var(--text-secondary);
+    padding: 0 11px;
+    font-size: 13px;
   }
-  .app-shell-mobile-menu .app-shell-capture {
-    justify-content: space-between;
+  .app-shell-mobile-more-signout {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
   }
-  .app-shell-mobile-signout {
-    min-height: 44px;
+  .app-shell-mobile-more-signout:disabled {
+    cursor: wait;
+    opacity: 0.65;
+  }
+  .app-shell-mobile-more-item:hover,
+  .app-shell-mobile-more-item.is-active {
+    background: var(--bg-hover);
+    color: var(--text-primary);
   }
   .app-shell-main {
-    padding: 16px;
+    padding: 16px 16px calc(104px + env(safe-area-inset-bottom));
   }
   .capture-document-content {
     padding: 48px 0 64px;
@@ -3937,7 +4024,7 @@ transform: none;
 
 @media (max-width: 767px) {
   .app-shell-main {
-padding: 24px 16px 56px;
+    padding: 24px 16px calc(104px + env(safe-area-inset-bottom));
   }
 
   .app-page-header {
