@@ -14,6 +14,12 @@ import {
 import { parseSaveCaptureResult } from "@/lib/captures/receipt";
 import { runSingleFlight } from "@/lib/captures/single-flight";
 import {
+	canSaveCapture,
+	captureWorkflowReducer,
+	getCaptureShortcutAction,
+	initialCaptureWorkflowState,
+} from "@/lib/captures/workflow";
+import {
 	createIdempotencyKey,
 	resolveIdempotencyKey,
 } from "@/lib/captures/idempotency";
@@ -45,11 +51,14 @@ export default function CapturePage() {
 	} = review;
 	const [areas, setAreas] = useState<Area[]>([]);
 	const [projects, setProjects] = useState<Project[]>([]);
-	const [loading, setLoading] = useState(true);
-	const [processing, setProcessing] = useState(false);
-	const [saving, setSaving] = useState(false);
-	const [error, setError] = useState("");
-	const [success, setSuccess] = useState("");
+	const [workflow, dispatchWorkflow] = useReducer(
+		captureWorkflowReducer,
+		initialCaptureWorkflowState,
+	);
+	const { phase, error, success } = workflow;
+	const loading = phase === "loading";
+	const processing = phase === "processing";
+	const saving = phase === "saving";
 	const [idempotencyKey, setIdempotencyKey] = useState("");
 	const [draftReady, setDraftReady] = useState(false);
 	const processFlight = useRef<Promise<void> | null>(null);
@@ -60,11 +69,16 @@ export default function CapturePage() {
 		const draft = readCaptureDraft(sessionStorage.getItem(CAPTURE_DRAFT_KEY));
 		if (draft) {
 			dispatchReview({ type: "hydrate-draft", draft });
+			dispatchWorkflow({ type: "HYDRATE_RESULT", result: draft.result });
 			setIdempotencyKey(draft.idempotencyKey);
 			captureKeyRawNote.current = draft.idempotencyKey ? draft.rawNote : null;
 		}
 		setDraftReady(true);
 	}, []);
+
+	useEffect(() => {
+		dispatchWorkflow({ type: "RESULT_CHANGED", result });
+	}, [result]);
 
 	useEffect(() => {
 		if (!draftReady) return;
@@ -108,19 +122,26 @@ export default function CapturePage() {
 				data: { user },
 			} = await supabase.auth.getUser();
 			if (!user) {
-				setError("Tu sesión expiró. Inicia sesión de nuevo.");
-				setLoading(false);
+				dispatchWorkflow({
+					type: "CONTEXT_FAILED",
+					message: "Tu sesión expiró. Inicia sesión de nuevo.",
+				});
 				return;
 			}
 			const [areaResult, projectResult] = await Promise.all([
 				supabase.from("areas").select("*").eq("user_id", user.id).order("name"),
 				supabase.from("projects").select("*").eq("user_id", user.id).order("name"),
 			]);
-			if (areaResult.error || projectResult.error)
-				setError("No pudimos cargar el contexto de tu sistema.");
+			if (areaResult.error || projectResult.error) {
+				dispatchWorkflow({
+					type: "CONTEXT_FAILED",
+					message: "No pudimos cargar el contexto de tu sistema.",
+				});
+			} else {
+				dispatchWorkflow({ type: "CONTEXT_READY" });
+			}
 			setAreas((areaResult.data ?? []) as Area[]);
 			setProjects((projectResult.data ?? []) as Project[]);
-			setLoading(false);
 		}
 		void loadContext();
 	}, []);
@@ -167,7 +188,10 @@ export default function CapturePage() {
 	async function process(preserveCaptureKey = false): Promise<void> {
 		return runSingleFlight(processFlight, async () => {
 			if (rawNote.trim().length < 1 || rawNote.trim().length > 12000) {
-				setError("Escribe una nota de entre 1 y 12,000 caracteres.");
+				dispatchWorkflow({
+					type: "PROCESS_FAILED",
+					message: "Escribe una nota de entre 1 y 12,000 caracteres.",
+				});
 				return;
 			}
 			if (
@@ -178,9 +202,7 @@ export default function CapturePage() {
 				setIdempotencyKey(createIdempotencyKey());
 				captureKeyRawNote.current = rawNote;
 			}
-			setProcessing(true);
-			setError("");
-			setSuccess("");
+			dispatchWorkflow({ type: "PROCESS_STARTED" });
 			dispatchReview({ type: "processing-started" });
 			try {
 				const response = await fetch("/api/ai/process-note", {
@@ -197,13 +219,16 @@ export default function CapturePage() {
 				if (!response.ok)
 					throw new Error(body.error || "No pudimos procesar la nota.");
 				dispatchReview({ type: "processed", result: body });
+				dispatchWorkflow({ type: "PROCESS_SUCCEEDED", result: body });
 			} catch (caught) {
-				setError(
-					caught instanceof Error ? caught.message : "No pudimos procesar la nota.",
-				);
+				dispatchWorkflow({
+					type: "PROCESS_FAILED",
+					message:
+						caught instanceof Error
+							? caught.message
+							: "No pudimos procesar la nota.",
+				});
 				throw caught;
-			} finally {
-				setProcessing(false);
 			}
 		});
 	}
@@ -213,12 +238,21 @@ export default function CapturePage() {
 			? assignedAreas[`${kind}:${index}`]
 			: fallback;
 
+	const approvedSuggestionCount = suggestions.filter((item) =>
+		Boolean(approved[suggestionKey(item)]),
+	).length;
+	const canSave = canSaveCapture({
+		phase: workflow.phase,
+		result,
+		rejectedItems,
+		approvedSuggestionCount,
+		isEditingItem: Boolean(editingItem),
+	});
+
 	async function saveResults(): Promise<void> {
-		if (!result) return;
+		if (!canSave || !result) return;
 		return runSingleFlight(saveFlight, async () => {
-			setSaving(true);
-			setError("");
-			setSuccess("");
+			dispatchWorkflow({ type: "SAVE_STARTED" });
 			try {
 				const assignments: Record<string, string | null> = {};
 				const tasks = result.tasks
@@ -328,22 +362,23 @@ export default function CapturePage() {
 					receipt.inbox_item_ids.length === 0
 						? "No quedó nada pendiente en Inbox."
 						: `${receipt.inbox_item_ids.length} elemento(s) quedaron en Inbox.`;
-				setSuccess(
-					`${receipt.existing ? "La captura ya estaba guardada." : "Captura guardada."} ${inboxMessage} Recibo: ${receipt.batch_id}`,
-				);
+				dispatchWorkflow({
+					type: "SAVE_SUCCEEDED",
+					message: `${receipt.existing ? "La captura ya estaba guardada." : "Captura guardada."} ${inboxMessage} Recibo: ${receipt.batch_id}`,
+				});
 				dispatchReview({ type: "reset-after-save" });
 				setIdempotencyKey("");
 				captureKeyRawNote.current = null;
 				clearCaptureDraft();
 			} catch (caught) {
-				setError(
-					caught instanceof Error
-						? caught.message
-						: "No pudimos guardar la captura.",
-				);
+				dispatchWorkflow({
+					type: "SAVE_FAILED",
+					message:
+						caught instanceof Error
+							? caught.message
+							: "No pudimos guardar la captura.",
+				});
 				throw caught;
-			} finally {
-				setSaving(false);
 			}
 		});
 	}
@@ -359,6 +394,30 @@ export default function CapturePage() {
 			value,
 		});
 	}
+
+	useEffect(() => {
+		function handleCaptureShortcut(event: KeyboardEvent) {
+			if (
+				event.repeat ||
+				!(event.metaKey || event.ctrlKey) ||
+				event.key !== "Enter"
+			)
+				return;
+			const action = getCaptureShortcutAction({
+				phase: workflow.phase,
+				hasNote: Boolean(rawNote.trim()),
+				hasResult: Boolean(result),
+				isEditingItem: Boolean(editingItem),
+				canSave,
+			});
+			if (!action) return;
+			event.preventDefault();
+			if (action === "process") void process().catch(() => undefined);
+			else void saveResults().catch(() => undefined);
+		}
+		window.addEventListener("keydown", handleCaptureShortcut);
+		return () => window.removeEventListener("keydown", handleCaptureShortcut);
+	});
 
 	const areaNames = new Map(areas.map((area) => [area.id, area.name]));
 	const projectNames = new Map(
@@ -378,9 +437,10 @@ export default function CapturePage() {
 				>
 					<MarkdownEditor
 						value={rawNote}
-						onChangeAction={(value) =>
-							dispatchReview({ type: "raw-note-changed", rawNote: value })
-						}
+						onChangeAction={(value) => {
+							dispatchReview({ type: "raw-note-changed", rawNote: value });
+							dispatchWorkflow({ type: "NOTE_CHANGED" });
+						}}
 						maxLength={12000}
 						disabled={processing || saving}
 						variant="minimal"
@@ -461,7 +521,7 @@ export default function CapturePage() {
 						onUndoReject={(key, token) =>
 							dispatchReview({ type: "undo-reject", key, token })
 						}
-						onSave={saveResults}
+						onSave={() => (canSave ? saveResults() : Promise.resolve())}
 						onRetry={() => process(true)}
 					/>
 				)}
