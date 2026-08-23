@@ -224,9 +224,7 @@ export default function CapturePage() {
 				dispatchWorkflow({
 					type: "PROCESS_FAILED",
 					message:
-						caught instanceof Error
-							? caught.message
-							: "No pudimos procesar la nota.",
+						caught instanceof Error ? caught.message : "No pudimos procesar la nota.",
 				});
 				throw caught;
 			}

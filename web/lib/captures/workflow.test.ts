@@ -27,7 +27,11 @@ describe("capture workflow reducer", () => {
 	});
 
 	it("returns to review after a failed save and preserves the result", () => {
-		const reviewing = { ...initialCaptureWorkflowState, phase: "reviewing" as const, result };
+		const reviewing = {
+			...initialCaptureWorkflowState,
+			phase: "reviewing" as const,
+			result,
+		};
 		const saving = captureWorkflowReducer(reviewing, { type: "SAVE_STARTED" });
 		const failed = captureWorkflowReducer(saving, {
 			type: "SAVE_FAILED",
@@ -61,7 +65,9 @@ describe("capture workflow reducer", () => {
 		expect(hydrated).toMatchObject({ phase: "reviewing", result });
 
 		const contextFirst = captureWorkflowReducer(
-			captureWorkflowReducer(initialCaptureWorkflowState, { type: "CONTEXT_READY" }),
+			captureWorkflowReducer(initialCaptureWorkflowState, {
+				type: "CONTEXT_READY",
+			}),
 			{ type: "HYDRATE_RESULT", result },
 		);
 		expect(contextFirst).toMatchObject({ phase: "reviewing", result });
@@ -70,7 +76,9 @@ describe("capture workflow reducer", () => {
 	it("does not let late context responses overwrite active workflow phases", () => {
 		for (const phase of ["processing", "saving", "success"] as const) {
 			const state = { ...initialCaptureWorkflowState, phase, result };
-			expect(captureWorkflowReducer(state, { type: "CONTEXT_READY" })).toEqual(state);
+			expect(captureWorkflowReducer(state, { type: "CONTEXT_READY" })).toEqual(
+				state,
+			);
 			expect(
 				captureWorkflowReducer(state, {
 					type: "CONTEXT_FAILED",
@@ -81,7 +89,10 @@ describe("capture workflow reducer", () => {
 	});
 
 	it("keeps workflow result synchronized when review changes", () => {
-		const changed = { ...result, tasks: [{ ...result.tasks[0], title: "Editada" }] };
+		const changed = {
+			...result,
+			tasks: [{ ...result.tasks[0], title: "Editada" }],
+		};
 		const state = captureWorkflowReducer(
 			{ ...initialCaptureWorkflowState, phase: "reviewing", result },
 			{ type: "RESULT_CHANGED", result: changed },
@@ -154,7 +165,9 @@ describe("capture keyboard shortcut", () => {
 			hasResult: true,
 			canSave: true,
 		};
-		expect(getCaptureShortcutAction({ ...base, isEditingItem: false })).toBe("save");
+		expect(getCaptureShortcutAction({ ...base, isEditingItem: false })).toBe(
+			"save",
+		);
 		expect(getCaptureShortcutAction({ ...base, isEditingItem: true })).toBeNull();
 	});
 

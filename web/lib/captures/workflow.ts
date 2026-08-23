@@ -126,7 +126,9 @@ export function canSaveCapture({
 		result.ideas.filter((_, index) => !rejectedItems[`idea:${index}`]).length +
 		result.second_brain.filter((_, index) => !rejectedItems[`knowledge:${index}`])
 			.length;
-	return originallyEmpty || remainingResultCount > 0 || approvedSuggestionCount > 0;
+	return (
+		originallyEmpty || remainingResultCount > 0 || approvedSuggestionCount > 0
+	);
 }
 
 export type CaptureShortcutAction = "process" | "save" | null;
@@ -145,12 +147,7 @@ export function getCaptureShortcutAction({
 	canSave: boolean;
 }): CaptureShortcutAction {
 	if (phase === "editing" && hasNote && !hasResult) return "process";
-	if (
-		phase === "reviewing" &&
-		hasResult &&
-		!isEditingItem &&
-		canSave
-	)
+	if (phase === "reviewing" && hasResult && !isEditingItem && canSave)
 		return "save";
 	return null;
 }
