@@ -3,10 +3,12 @@ import type { CaptureDraft } from "@/lib/captures/draft";
 import { hashCaptureNote } from "@/lib/captures/draft";
 import {
 	captureReviewReducer,
+	getCaptureReviewAttention,
 	getCaptureReviewState,
+	getDeterministicCaptureDefaults,
 	initialCaptureReviewState,
 } from "@/lib/captures/review-state";
-import type { CaptureOutput } from "@/types";
+import type { CaptureOutput, Project } from "@/types";
 
 const result: CaptureOutput = {
 	tasks: [
@@ -41,6 +43,7 @@ const draft: CaptureDraft = {
 	processedNoteHash: hashCaptureNote("Nota recuperada"),
 	approved: { "new_area:Trabajo": true },
 	assignedAreas: { "task:0": "area-id" },
+	assignedProjects: { "task:0": "project-id" },
 	rejectedItems: { "idea:0": true },
 	editedValues: { "task:0": "Tarea editada" },
 	projectAreas: { "new_project:Proyecto": "area-id" },
@@ -54,10 +57,8 @@ const transientState = {
 	isStale: false,
 	approved: { suggestion: true },
 	assignedAreas: { "task:0": "old-area" },
+	assignedProjects: { "task:0": "old-project" },
 	rejectedItems: { "idea:0": true },
-	editingItem: "task:0",
-	editedValues: { "task:0": "cambio" },
-	projectAreas: { project: "old-area" },
 };
 
 describe("capture review reducer", () => {
@@ -98,6 +99,7 @@ describe("capture review reducer", () => {
 			isStale: false,
 			approved: {},
 			assignedAreas: {},
+			assignedProjects: {},
 			rejectedItems: {},
 			undoToken: null,
 			editingItem: null,
@@ -119,6 +121,19 @@ describe("capture review reducer", () => {
 		});
 		expect(state.assignedAreas).toEqual({ "task:0": "area-id" });
 		expect(state.projectAreas).toEqual({ "task:0": "project-area-id" });
+	});
+	it("clears an incompatible project when its area changes", () => {
+		let state = captureReviewReducer(
+			{ ...initialCaptureReviewState, assignedProjects: { "task:0": "project-a" } },
+			{ type: "assign-area", key: "task:0", value: "area-b", projectAreasById: { "project-a": "area-a" } },
+		);
+		expect(state.assignedProjects).toEqual({ "task:0": null });
+		state = captureReviewReducer(state, {
+			type: "assign-project",
+			key: "task:0",
+			value: "project-b",
+		});
+		expect(state.assignedProjects["task:0"]).toBe("project-b");
 	});
 
 	it("supports beginning, changing and cancelling an edit", () => {
@@ -179,6 +194,7 @@ describe("capture review reducer", () => {
 			result: draft.result,
 			approved: draft.approved,
 			assignedAreas: draft.assignedAreas,
+			assignedProjects: draft.assignedProjects,
 			rejectedItems: draft.rejectedItems,
 			resultNoteHash: draft.processedNoteHash,
 			isStale: false,
@@ -359,5 +375,74 @@ describe("capture review derived state", () => {
 			originallyEmpty: false,
 			emptyAfterManualDiscard: true,
 		});
+	});
+});
+
+describe("capture review attention", () => {
+	it("counts unresolved destinations and task project mismatches, excluding rejected items", () => {
+		const reviewed: CaptureOutput = {
+			...result,
+			tasks: [
+				{ ...result.tasks[0], area_id: "area-a", project_id: "project-b" },
+				{ ...result.tasks[0], area_id: "area-a", project_id: "project-a" },
+			],
+			ideas: [{ ...result.ideas[0], area_id: "area-a", suggested_new_area: "Nueva" }],
+			second_brain: [],
+		};
+		const projects = [
+			{ id: "project-a", area_id: "area-a" },
+			{ id: "project-b", area_id: "area-b" },
+		] as Project[];
+		expect(
+			getCaptureReviewAttention(
+				reviewed,
+				{ "task:1": true },
+				{},
+				{},
+				projects,
+			),
+		).toBe(2);
+	});
+
+	it("updates attention from effective assignments", () => {
+		const reviewed: CaptureOutput = {
+			...result,
+			tasks: [{ ...result.tasks[0], area_id: null, project_id: null }],
+			ideas: [],
+			second_brain: [],
+		};
+		const projects = [{ id: "project-a", area_id: "area-a" }] as Project[];
+		expect(
+			getCaptureReviewAttention(
+				reviewed,
+				{},
+				{ "task:0": "area-a" },
+				{ "task:0": "project-a" },
+				projects,
+			),
+		).toBe(0);
+	});
+});
+
+describe("deterministic capture defaults", () => {
+	it("uses a sole area/project without creating destinations", () => {
+		const defaults = getDeterministicCaptureDefaults(
+			{ ...result, tasks: [{ ...result.tasks[0], area_id: null, project_id: null }] },
+			[{ id: "area-a", name: "Trabajo" }],
+			[{ id: "project-a", name: "Único", area_id: "area-a" }],
+		);
+		expect(defaults).toEqual({
+			assignedAreas: { "task:0": "area-a", "idea:0": "area-a", "knowledge:0": "area-a" },
+			assignedProjects: { "task:0": "project-a" },
+		});
+	});
+
+	it("leaves ambiguous destinations unresolved", () => {
+		const defaults = getDeterministicCaptureDefaults(
+			{ ...result, tasks: [{ ...result.tasks[0], area_id: null, project_id: null }] },
+			[{ id: "area-a", name: "A" }, { id: "area-b", name: "B" }],
+			[],
+		);
+		expect(defaults.assignedAreas["task:0"]).toBeUndefined();
 	});
 });

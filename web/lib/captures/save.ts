@@ -6,6 +6,24 @@ import type { SaveCaptureInput, SaveCaptureResult } from "@/types"
 
 const inputSchema = z.object({ idempotency_key: z.string().uuid(), raw_note: z.string().min(1).max(12000).refine((value) => value.trim().length > 0, "A note is required."), confirmed_output: processNoteOutputSchema, assignments: z.record(z.string(), z.string().uuid().nullable()), fallback_to_inbox: z.boolean().default(false) })
 
+const FALLBACK_TITLE = "Captura original"
+const FALLBACK_TITLE_MAX_LENGTH = 96
+
+export function deriveCaptureTitle(rawNote: string): string {
+  const firstLine = rawNote
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find(Boolean) ?? ""
+  const title = firstLine
+    .replace(/^#{1,6}\s*/, "")
+    .replace(/^(?:[-*+](?:\s+|$)|\d+[.)](?:\s+|$))/, "")
+    .replace(/\s+/g, " ")
+    .trim()
+  if (!title) return FALLBACK_TITLE
+  if (title.length <= FALLBACK_TITLE_MAX_LENGTH) return title
+  return `${title.slice(0, FALLBACK_TITLE_MAX_LENGTH - 1).trimEnd()}…`
+}
+
 export async function saveCapture(body: unknown): Promise<SaveCaptureResult> {
   const input = inputSchema.parse(body) as SaveCaptureInput
   const hasApprovedSuggestion = input.confirmed_output.suggestions.some((item) =>
@@ -51,7 +69,7 @@ export async function saveCapture(body: unknown): Promise<SaveCaptureResult> {
     input.confirmed_output.tasks.length === 0 &&
     input.confirmed_output.ideas.length === 0 &&
     input.confirmed_output.second_brain.length === 0
-  const { data, error } = await supabase.rpc("save_capture", { p_idempotency_key: input.idempotency_key, p_raw_note: input.raw_note, p_tasks: tasks, p_ideas: ideas, p_second_brain: secondBrain, p_inbox: fallbackInbox ? [{ kind: "knowledge", title: "Captura original", content: input.raw_note }] : [], p_output_snapshot: outputSnapshot, p_approved_suggestions: approved })
+  const { data, error } = await supabase.rpc("save_capture", { p_idempotency_key: input.idempotency_key, p_raw_note: input.raw_note, p_tasks: tasks, p_ideas: ideas, p_second_brain: secondBrain, p_inbox: fallbackInbox ? [{ kind: "knowledge", title: deriveCaptureTitle(input.raw_note), content: input.raw_note }] : [], p_output_snapshot: outputSnapshot, p_approved_suggestions: approved })
   if (error) throw new Error(error.message)
   return parseSaveCaptureResult(data)
 }

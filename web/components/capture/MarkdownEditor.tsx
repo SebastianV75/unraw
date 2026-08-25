@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import Code2 from "reicon-react/icons/Code2";
 import Link8 from "reicon-react/icons/Link8";
@@ -119,6 +119,9 @@ export function MarkdownEditor({
 	const minimalVariant = variant === "minimal";
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const [mode, setMode] = useState<"write" | "preview">("write");
+	useEffect(() => {
+		if (autoFocus) textareaRef.current?.focus();
+	}, [autoFocus]);
 
 	function applyAction(action: ToolbarAction) {
 		const textarea = textareaRef.current;
@@ -186,11 +189,13 @@ export function MarkdownEditor({
 			}
 			placeholder={
 				minimalVariant
-					? "Escribe lo que tengas en mente..."
+					? "Escribe lo que tengas en mente…"
 					: documentVariant
 						? "Empieza a escribir…\n\nUsa la barra de formato cuando la necesites."
 						: "Escribe lo que tengas en mente. Nosotros nos encargamos de ordenarlo.\n\nPuedes usar Markdown cuando lo necesites."
 			}
+			name="capture-note"
+			autoComplete="off"
 			autoFocus={autoFocus}
 			value={value}
 			onChange={(event) => onChangeAction(event.target.value)}

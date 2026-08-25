@@ -6,6 +6,16 @@ import type {
 export const CAPTURE_DRAFT_KEY = "unraw-capture-draft";
 export const CAPTURE_DRAFT_VERSION = 1 as const;
 
+export type CaptureEditedFields = {
+	title?: string;
+	content?: string;
+	due_date?: string | null;
+	due_at?: string | null;
+	tags?: string[];
+	area_id?: string | null;
+	project_id?: string | null;
+};
+
 export type CaptureDraft = {
 	version: typeof CAPTURE_DRAFT_VERSION;
 	rawNote: string;
@@ -15,8 +25,11 @@ export type CaptureDraft = {
 	result: CaptureOutput | null;
 	approved: Record<string, boolean>;
 	assignedAreas: CaptureAssignments;
+	assignedProjects?: CaptureAssignments;
 	rejectedItems: Record<string, boolean>;
 	editedValues: Record<string, string>;
+	/** Optional per-item edits; absent in older v1 drafts. */
+	editedFields?: Record<string, CaptureEditedFields>;
 	projectAreas: Record<string, string>;
 };
 
@@ -63,6 +76,19 @@ function isBooleanRecord(value: unknown): value is Record<string, boolean> {
 		Object.values(value).every((item) => typeof item === "boolean")
 	);
 }
+function isEditedFieldsRecord(value: unknown): value is Record<string, CaptureEditedFields> {
+	if (!isRecord(value)) return false;
+	return Object.values(value).every((item) => {
+		if (!isRecord(item)) return false;
+		if (item.title !== undefined && typeof item.title !== "string") return false;
+		if (item.content !== undefined && typeof item.content !== "string") return false;
+		if (item.due_date !== undefined && item.due_date !== null && typeof item.due_date !== "string") return false;
+		if (item.due_at !== undefined && item.due_at !== null && typeof item.due_at !== "string") return false;
+		if (item.area_id !== undefined && item.area_id !== null && typeof item.area_id !== "string") return false;
+		if (item.project_id !== undefined && item.project_id !== null && typeof item.project_id !== "string") return false;
+		return item.tags === undefined || (Array.isArray(item.tags) && item.tags.every((tag) => typeof tag === "string"));
+	});
+}
 
 function isNullableStringRecord(
 	value: unknown,
@@ -84,6 +110,7 @@ function createLegacyDraft(rawNote: string): CaptureDraft | null {
 		result: null,
 		approved: {},
 		assignedAreas: {},
+		assignedProjects: {},
 		rejectedItems: {},
 		editedValues: {},
 		projectAreas: {},
@@ -108,8 +135,11 @@ export function readCaptureDraft(value: string | null): CaptureDraft | null {
 				typeof parsed.processedNoteHash !== "string") ||
 			!isBooleanRecord(parsed.approved) ||
 			!isNullableStringRecord(parsed.assignedAreas) ||
+			(parsed.assignedProjects !== undefined &&
+				!isNullableStringRecord(parsed.assignedProjects)) ||
 			!isBooleanRecord(parsed.rejectedItems) ||
 			!isStringRecord(parsed.editedValues) ||
+			(parsed.editedFields !== undefined && !isEditedFieldsRecord(parsed.editedFields)) ||
 			!isStringRecord(parsed.projectAreas)
 		) {
 			return createLegacyDraft(value);

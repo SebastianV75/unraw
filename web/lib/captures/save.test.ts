@@ -1,5 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { saveCapture } from "@/lib/captures/save";
+import { deriveCaptureTitle, saveCapture } from "@/lib/captures/save";
+
+describe("deriveCaptureTitle", () => {
+	it("uses the first non-empty line", () => {
+		expect(deriveCaptureTitle("\n  ir al miércoles a la plática\ncon más detalle")).toBe("ir al miércoles a la plática");
+	});
+
+	it("removes Markdown list markers and truncates long titles", () => {
+		const title = deriveCaptureTitle(`\n## - ${"una nota muy larga ".repeat(10)}`);
+		expect(title.length).toBeLessThanOrEqual(96);
+		expect(title).toMatch(/^una nota muy larga/);
+		expect(title.endsWith("…")).toBe(true);
+	});
+
+	it("falls back when no usable title remains", () => {
+		expect(deriveCaptureTitle(" \n\t")).toBe("Captura original");
+		expect(deriveCaptureTitle("- \n")).toBe("Captura original");
+	});
+});
 
 const mocks = vi.hoisted(() => ({
 	createClient: vi.fn(),
@@ -74,7 +92,7 @@ describe("saveCapture reliability policy", () => {
 				p_inbox: [
 					{
 						kind: "knowledge",
-						title: "Captura original",
+						title: "conserva",
 						content: "  conserva\nla nota completa  ",
 					},
 				],

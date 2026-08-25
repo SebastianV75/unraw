@@ -18,6 +18,7 @@ import type {
 	ProjectStatus,
 	Idea,
 	SecondBrainEntry,
+	ProfileView,
 } from "@/types";
 import { LoadingButton } from "@/components/interior/loading-button";
 import { SkeletonSwap } from "@/components/interior/skeleton-swap";
@@ -32,6 +33,7 @@ export default function AreaPage({
 	const [area, setArea] = useState<Area | null>(null);
 	const [projects, setProjects] = useState<Project[]>([]);
 	const [tasks, setTasks] = useState<Task[]>([]);
+	const [preferredView, setPreferredView] = useState<ProfileView>("list");
 	const [ideas, setIdeas] = useState<Idea[]>([]);
 	const [knowledge, setKnowledge] = useState<SecondBrainEntry[]>([]);
 	const [projectName, setProjectName] = useState("");
@@ -56,7 +58,7 @@ export default function AreaPage({
 			setLoading(false);
 			return;
 		}
-		const [areaResult, projectResult, taskResult, ideaResult, knowledgeResult] =
+	const [areaResult, projectResult, taskResult, ideaResult, knowledgeResult, profileResult] =
 			await Promise.all([
 				supabase
 					.from("areas")
@@ -88,6 +90,11 @@ export default function AreaPage({
 					.eq("area_id", areaId)
 					.eq("user_id", user.id)
 					.order("created_at", { ascending: false }),
+				supabase
+					.from("profiles")
+					.select("preferred_view")
+					.eq("id", user.id)
+					.maybeSingle(),
 			]);
 		if (areaResult.error || !areaResult.data)
 			setError("No encontramos esta área o no está disponible.");
@@ -98,6 +105,9 @@ export default function AreaPage({
 			setTasks((taskResult.data ?? []) as Task[]);
 			setIdeas((ideaResult.data ?? []) as Idea[]);
 			setKnowledge((knowledgeResult.data ?? []) as SecondBrainEntry[]);
+			setPreferredView(
+				profileResult.data?.preferred_view === "kanban" ? "kanban" : "list",
+			);
 		}
 		if (
 			projectResult.error ||
@@ -331,7 +341,7 @@ export default function AreaPage({
 						pendingLabel="Creando…"
 						disabled={saving || !projectName.trim()}
 					>
-						Add project
+						Añadir proyecto
 					</LoadingButton>
 				</form>
 				{projects.length === 0 ? (
@@ -375,6 +385,7 @@ export default function AreaPage({
 				</div>
 				<TaskList
 					tasks={tasks}
+					view={preferredView}
 					onStatusChangedAction={(task) =>
 						setTasks((current) =>
 							current.map((item) => (item.id === task.id ? task : item)),

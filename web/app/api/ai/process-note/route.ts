@@ -49,7 +49,7 @@ export async function POST(request: Request) {
   // Profile is deliberately loaded first: auth/provider/quota decisions remain unchanged.
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("tier, openrouter_token, openrouter_model")
+    .select("tier, openrouter_token, openrouter_model, capture_preferences")
     .eq("id", user.id)
     .single();
   if (profileError || !profile)
@@ -61,6 +61,7 @@ export async function POST(request: Request) {
     areas: { id: string; name: string }[];
     projects: { id: string; name: string; area_id: string }[];
     timezone: string;
+    capture_preferences: ("tasks" | "ideas" | "knowledge")[];
   };
   let retrievalElapsedMs: number | undefined;
 
@@ -81,6 +82,9 @@ export async function POST(request: Request) {
           area_id,
         })),
         timezone: parsedInput.data.timezone,
+        capture_preferences: profile.capture_preferences?.length
+          ? profile.capture_preferences
+          : ["tasks", "ideas"],
       };
         } catch (error) {
           retrievalElapsedMs = performance.now() - startedAt;
@@ -115,6 +119,9 @@ export async function POST(request: Request) {
             areas: [],
             projects: [],
             timezone: parsedInput.data.timezone,
+            capture_preferences: profile.capture_preferences?.length
+              ? profile.capture_preferences
+              : ["tasks", "ideas"],
           };
         }
   } else {
@@ -138,6 +145,9 @@ export async function POST(request: Request) {
     context = {
       areas: areas ?? [],
       projects: projects ?? [],
+      capture_preferences: profile.capture_preferences?.length
+        ? profile.capture_preferences
+        : ["tasks", "ideas"],
       timezone: parsedInput.data.timezone,
     };
   }

@@ -3681,6 +3681,9 @@ transform: none;
 }
 
 .app-shell-sidebar {
+  align-self: stretch;
+  height: 100dvh;
+  min-height: 100dvh;
   background: var(--bg-page);
   border-right-color: color-mix(in srgb, var(--border) 80%, transparent);
 }
@@ -3694,6 +3697,127 @@ transform: none;
 
 .app-shell-command-palette .command-launcher {
   box-shadow: 0 8px 24px rgb(26 29 32 / 8%);
+}
+.app-shell-global-capture {
+  position: fixed;
+  z-index: 60;
+  right: 16px;
+  bottom: 16px;
+}
+.global-capture-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  padding: 9px 12px;
+  box-shadow: 0 8px 24px rgb(26 29 32 / 8%);
+  transition: transform 140ms ease-out, box-shadow 140ms ease-out;
+}
+.global-capture-trigger:hover { box-shadow: 0 10px 28px rgb(26 29 32 / 12%); }
+.global-capture-trigger:active { transform: scale(.98); }
+.global-capture-trigger kbd,
+.global-capture-escape,
+.global-capture-command-hints kbd {
+  border: 1px solid var(--border);
+  border-bottom-color: color-mix(in srgb, var(--border) 70%, var(--text-secondary));
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--bg-surface) 78%, var(--text-secondary));
+  color: var(--text-secondary);
+  font: 600 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+  padding: 2px 6px;
+}
+@media (max-width: 767px) {
+  .app-shell-global-capture {
+    right: calc(12px + env(safe-area-inset-right));
+    bottom: calc(78px + env(safe-area-inset-bottom));
+  }
+  .global-capture-trigger kbd { display: none; }
+}
+.global-capture-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: start center;
+  padding: 12vh 16px max(24px, env(safe-area-inset-bottom));
+  overflow-y: auto;
+  background: rgb(16 20 24 / 38%);
+  backdrop-filter: blur(8px);
+}
+@supports not (backdrop-filter: blur(1px)) {
+  .global-capture-overlay { background: rgb(16 20 24 / 52%); }
+}
+.global-capture-dialog {
+  width: min(680px, calc(100vw - 32px));
+  border: 1px solid color-mix(in srgb, var(--border) 80%, white);
+  border-radius: 16px;
+  background: var(--bg-surface);
+  padding: 18px;
+  box-shadow: 0 28px 80px rgb(16 20 24 / 28%), 0 4px 16px rgb(16 20 24 / 12%);
+}
+.global-capture-header,
+.global-capture-heading,
+.global-capture-actions {
+  display: flex;
+  align-items: center;
+}
+.global-capture-header { justify-content: space-between; gap: 16px; }
+.global-capture-heading { gap: 10px; }
+.global-capture-mark {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--text-secondary);
+  font-size: 19px;
+}
+.global-capture-eyebrow {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.global-capture-dialog h2 { margin: 1px 0 0; font-size: 17px; letter-spacing: -.01em; }
+.global-capture-description { margin: 12px 0 8px; color: var(--text-secondary); font-size: 13px; }
+.global-capture-dialog textarea {
+  display: block;
+  width: 100%;
+  min-height: 112px;
+  resize: vertical;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 18px;
+  line-height: 1.55;
+  padding: 8px 0;
+}
+.global-capture-dialog textarea::placeholder { color: var(--text-secondary); opacity: .72; }
+.global-capture-dialog textarea:focus-visible { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+.global-capture-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 12px;
+}
+.global-capture-status { flex: 1 1 160px; min-height: 20px; color: var(--text-secondary); font-size: 12px; }
+.global-capture-command-hints { display: flex; align-items: center; gap: 10px; color: var(--text-secondary); font-size: 11px; }
+.global-capture-command-hints span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.global-capture-actions .btn { min-width: 78px; }
+@media (max-width: 560px) {
+  .global-capture-overlay { padding-top: max(32px, 8vh); }
+  .global-capture-dialog { padding: 16px; border-radius: 14px; }
+  .global-capture-command-hints { order: 3; width: 100%; justify-content: flex-end; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .global-capture-trigger { transition: none; }
 }
 
 .app-shell-brand {
@@ -5641,6 +5765,17 @@ padding: 20px 20px 8px;
   border-bottom: 1px solid var(--border);
   padding: 15px 2px;
 }
+.task-kanban .task-row[draggable="true"] {
+  cursor: grab;
+}
+.task-kanban .task-row.is-dragging {
+  cursor: grabbing;
+  opacity: 0.45;
+}
+.task-kanban-column.is-drag-over {
+  border-color: var(--flow-accent);
+  background: color-mix(in srgb, var(--flow-accent) 7%, var(--bg-surface));
+}
 .task-row-main {
   display: flex;
   min-width: 0;
@@ -5723,6 +5858,61 @@ padding: 20px 20px 8px;
   padding: 22px 2px;
   color: var(--text-secondary);
   font-size: 13px;
+}
+.task-kanban {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.task-kanban-column {
+  min-width: 0;
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+}
+.task-kanban-column > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  padding: 12px 14px;
+}
+.task-kanban-column > header h3 {
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+.task-kanban-column > header span {
+  color: var(--text-muted);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10px;
+}
+.task-kanban-items {
+  display: grid;
+  gap: 1px;
+  min-height: 70px;
+}
+.task-kanban .task-row {
+  display: block;
+  padding: 13px;
+}
+.task-kanban .task-row-main {
+  gap: 9px;
+}
+.task-kanban .task-row-actions {
+  flex-wrap: wrap;
+  margin-top: 12px;
+  gap: 9px;
+}
+.task-kanban .task-status-label {
+  border: 1px solid var(--border);
+  padding: 4px 7px;
+}
+.task-kanban .task-edit-footer {
+  display: grid;
+  gap: 10px;
+}
+.task-kanban .task-edit-actions {
+  justify-content: flex-start;
 }
 .task-edit-panel {
   display: grid;
@@ -6021,8 +6211,12 @@ grid-template-columns: 1fr;
   }
 
   .markdown-editor-live-grid > .markdown-document-preview {
-border-top: 1px solid var(--border);
-border-left: 0;
+    border-top: 1px solid var(--border);
+    border-left: 0;
+  }
+
+  .task-kanban {
+    grid-template-columns: 1fr;
   }
 
   .knowledge-note-footer {

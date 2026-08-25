@@ -11,6 +11,15 @@ import { useUnifiedSearch } from "@/components/navigation/useUnifiedSearch";
 import type { SearchMode } from "@/lib/search/types";
 import { useRouter } from "next/navigation";
 const RESULTS_LIST_ID = "command-search-results";
+export function isCommandPaletteShortcut(
+	event: Pick<globalThis.KeyboardEvent, "metaKey" | "ctrlKey" | "key" | "code">,
+) {
+	return (
+		(event.metaKey || event.ctrlKey) &&
+		(event.code === "KeyK" || event.key.toLowerCase() === "k")
+	);
+}
+
 
 export function CommandPalette() {
 	const router = useRouter();
@@ -40,7 +49,7 @@ export function CommandPalette() {
 
 	useEffect(() => {
 		function handleShortcut(event: globalThis.KeyboardEvent) {
-			if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+			if (isCommandPaletteShortcut(event)) {
 				event.preventDefault();
 				openPalette();
 			}

@@ -12,6 +12,7 @@ export type CaptureWorkflowState = {
 	phase: CaptureWorkflowPhase;
 	result: CaptureOutput | null;
 	error: string;
+	saveError: string;
 	success: string;
 };
 
@@ -32,8 +33,10 @@ export const initialCaptureWorkflowState: CaptureWorkflowState = {
 	phase: "loading",
 	result: null,
 	error: "",
+	saveError: "",
 	success: "",
 };
+
 
 function phaseAllowsContextUpdate(phase: CaptureWorkflowPhase) {
 	return phase === "loading" || phase === "editing" || phase === "reviewing";
@@ -80,6 +83,7 @@ export function captureWorkflowReducer(
 				// Keep the previous result available while a replacement is pending.
 				result: state.result,
 				error: "",
+				saveError: "",
 				success: "",
 			};
 		case "PROCESS_SUCCEEDED":
@@ -87,6 +91,8 @@ export function captureWorkflowReducer(
 				...state,
 				phase: "reviewing",
 				result: action.result,
+				error: "",
+				saveError: "",
 			};
 		case "PROCESS_FAILED":
 			return {
@@ -96,16 +102,17 @@ export function captureWorkflowReducer(
 				error: action.message,
 			};
 		case "SAVE_STARTED":
-			return { ...state, phase: "saving", error: "", success: "" };
+			return { ...state, phase: "saving", error: "", saveError: "", success: "" };
 		case "SAVE_SUCCEEDED":
 			return {
 				phase: "success",
 				result: null,
 				error: "",
+				saveError: "",
 				success: action.message,
 			};
 		case "SAVE_FAILED":
-			return { ...state, phase: "reviewing", error: action.message };
+			return { ...state, phase: "reviewing", error: action.message, saveError: action.message };
 	}
 }
 
@@ -156,7 +163,8 @@ export function getCaptureShortcutAction({
 	canSave: boolean;
 	isStale?: boolean;
 }): CaptureShortcutAction {
-	if (phase === "editing" && hasNote && !hasResult) return "process";
+	if ((phase === "loading" || phase === "editing") && hasNote && !hasResult)
+		return "process";
 	if (
 		phase === "reviewing" &&
 		hasResult &&

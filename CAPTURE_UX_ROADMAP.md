@@ -2,7 +2,7 @@
 
 ## Estado
 
-- **Documento de planificación:** no implementado.
+- **Documento de planificación:** Slice A, Slice B, Slice C, Slice D, Slice E y Slice F implementados.
 - **Objetivo:** hacer que Captura sea rápida, clara y confiable desde la nota inicial hasta el siguiente paso después de guardar.
 - **Principio:** priorizar corrección, confianza y velocidad percibida antes de añadir polish visual o animaciones.
 

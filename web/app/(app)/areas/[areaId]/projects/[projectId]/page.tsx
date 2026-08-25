@@ -8,7 +8,7 @@ import TaskForm from "@/components/tasks/TaskForm";
 import TaskList from "@/components/tasks/TaskList";
 import { LoadingButton } from "@/components/interior/loading-button";
 import { SkeletonSwap } from "@/components/interior/skeleton-swap";
-import type { Area, Project, ProjectStatus, Task } from "@/types";
+import type { Area, Project, ProjectStatus, ProfileView, Task } from "@/types";
 
 export default function ProjectPage({
 	params,
@@ -26,6 +26,7 @@ export default function ProjectPage({
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
 	const [projectStatus, setProjectStatus] = useState<ProjectStatus>("active");
+	const [preferredView, setPreferredView] = useState<ProfileView>("list");
 	const [saving, setSaving] = useState(false);
 
 	useEffect(() => {
@@ -39,7 +40,7 @@ export default function ProjectPage({
 				setLoading(false);
 				return;
 			}
-			const [areaResult, projectResult, taskResult] = await Promise.all([
+			const [areaResult, projectResult, taskResult, profileResult] = await Promise.all([
 				supabase
 					.from("areas")
 					.select("*")
@@ -60,6 +61,11 @@ export default function ProjectPage({
 					.eq("area_id", areaId)
 					.eq("user_id", user.id)
 					.order("created_at", { ascending: false }),
+				supabase
+					.from("profiles")
+					.select("preferred_view")
+					.eq("id", user.id)
+					.maybeSingle(),
 			]);
 			if (
 				areaResult.error ||
@@ -75,6 +81,9 @@ export default function ProjectPage({
 				setName(loadedProject.name);
 				setDescription(loadedProject.description ?? "");
 				setProjectStatus(loadedProject.status);
+				setPreferredView(
+					profileResult.data?.preferred_view === "kanban" ? "kanban" : "list",
+				);
 				setTasks((taskResult.data ?? []) as Task[]);
 			}
 			if (taskResult.error)
@@ -288,6 +297,7 @@ export default function ProjectPage({
 				</div>
 				<TaskList
 					tasks={tasks}
+					view={preferredView}
 					onStatusChangedAction={(task) =>
 						setTasks((current) =>
 							current.map((item) => (item.id === task.id ? task : item)),

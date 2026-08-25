@@ -36,7 +36,9 @@ export async function middleware(request: NextRequest) {
 		hasPath(pathname, prefix),
 	);
 	const isOnboarding = pathname === "/onboarding";
+	const isRoot = pathname === "/";
 	const isProtected = isAppRoute || isOnboarding;
+	const shouldCheckProfile = isProtected || isRoot;
 
 	const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 	const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -76,7 +78,7 @@ export async function middleware(request: NextRequest) {
 
 	if (!user) return response;
 
-	if (!isProtected) return response;
+	if (!shouldCheckProfile) return response;
 
 	const { data: profile } = await supabase
 		.from("profiles")
@@ -85,6 +87,13 @@ export async function middleware(request: NextRequest) {
 		.maybeSingle();
 
 	const onboardingCompleted = profile?.onboarding_completed === true;
+	if (isRoot) {
+		return redirectWithCookies(
+			response,
+			request,
+			onboardingCompleted ? "/capture" : "/onboarding",
+		);
+	}
 
 	if (isOnboarding && onboardingCompleted) {
 		return redirectWithCookies(response, request, "/overview");

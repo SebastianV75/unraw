@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { CaptureReviewPanel } from "@/components/capture/CaptureReviewPanel";
 import { MarkdownEditor } from "@/components/capture/MarkdownEditor";
 import { LoadingButton } from "@/components/interior/loading-button";
@@ -12,6 +13,7 @@ import {
 	clearCaptureDraft,
 	hashCaptureNote,
 } from "@/lib/captures/draft";
+import { formatSaveSuccess } from "@/lib/captures/success-summary";
 import { parseSaveCaptureResult } from "@/lib/captures/receipt";
 import { runSingleFlight } from "@/lib/captures/single-flight";
 import {
@@ -28,13 +30,18 @@ import { createClient } from "@/lib/supabase/client";
 import type { Area, CaptureOutput, CaptureSuggestion, Project } from "@/types";
 import {
 	captureReviewReducer,
+	getDeterministicCaptureDefaults,
 	initialCaptureReviewState,
 } from "@/lib/captures/review-state";
 
 const suggestionKey = (suggestion: CaptureSuggestion) =>
 	`${suggestion.type}:${suggestion.name.toLowerCase()}`;
-
 export default function CapturePage() {
+	const [finePointer, setFinePointer] = useState(false);
+	useEffect(() => {
+		setFinePointer(window.matchMedia("(pointer: fine)").matches);
+	}, []);
+	const router = useRouter();
 	const [review, dispatchReview] = useReducer(
 		captureReviewReducer,
 		initialCaptureReviewState,
@@ -44,10 +51,12 @@ export default function CapturePage() {
 		result,
 		approved,
 		assignedAreas,
+		assignedProjects,
 		rejectedItems,
 		undoToken,
 		editingItem,
 		editedValues,
+		editedFields,
 		projectAreas,
 		resultNoteHash,
 		isStale,
@@ -58,7 +67,7 @@ export default function CapturePage() {
 		captureWorkflowReducer,
 		initialCaptureWorkflowState,
 	);
-	const { phase, error, success } = workflow;
+	const { phase, error, saveError, success } = workflow;
 	const loading = phase === "loading";
 	const processing = phase === "processing";
 	const saving = phase === "saving";
@@ -67,6 +76,7 @@ export default function CapturePage() {
 	const processFlight = useRef<Promise<void> | null>(null);
 	const saveFlight = useRef<Promise<void> | null>(null);
 	const captureKeyRawNote = useRef<string | null>(null);
+	const successRef = useRef<HTMLDivElement | null>(null);
 
 	useEffect(() => {
 		const draft = readCaptureDraft(sessionStorage.getItem(CAPTURE_DRAFT_KEY));
@@ -82,6 +92,12 @@ export default function CapturePage() {
 	useEffect(() => {
 		dispatchWorkflow({ type: "RESULT_CHANGED", result });
 	}, [result]);
+
+	useEffect(() => {
+		if (!success) return;
+		const frame = requestAnimationFrame(() => successRef.current?.focus());
+		return () => cancelAnimationFrame(frame);
+	}, [success]);
 
 	useEffect(() => {
 		if (!draftReady) return;
@@ -103,8 +119,10 @@ export default function CapturePage() {
 			processedNoteHash: resultNoteHash,
 			approved,
 			assignedAreas,
+			assignedProjects,
 			rejectedItems,
 			editedValues,
+			editedFields,
 			projectAreas,
 		});
 	}, [
@@ -112,10 +130,11 @@ export default function CapturePage() {
 		rawNote,
 		idempotencyKey,
 		result,
-		approved,
 		assignedAreas,
+		assignedProjects,
 		rejectedItems,
 		editedValues,
+		editedFields,
 		projectAreas,
 		resultNoteHash,
 	]);
@@ -190,6 +209,19 @@ export default function CapturePage() {
 		);
 	}, [result]);
 
+	useEffect(() => {
+		if (!result || !areas.length) return;
+		const defaults = getDeterministicCaptureDefaults(result, areas, projects);
+		for (const [key, value] of Object.entries(defaults.assignedAreas)) {
+			if (!Object.prototype.hasOwnProperty.call(assignedAreas, key))
+				dispatchReview({ type: "assign-area", key, value });
+		}
+		for (const [key, value] of Object.entries(defaults.assignedProjects)) {
+			if (!Object.prototype.hasOwnProperty.call(assignedProjects, key))
+				dispatchReview({ type: "assign-project", key, value });
+		}
+	}, [result, areas, projects, assignedAreas, assignedProjects]);
+
 	async function process(preserveCaptureKey = false): Promise<void> {
 		return runSingleFlight(processFlight, async () => {
 			if (rawNote.trim().length < 1 || rawNote.trim().length > 12000) {
@@ -236,11 +268,20 @@ export default function CapturePage() {
 			}
 		});
 	}
-
 	const selectedArea = (kind: string, index: number, fallback: string | null) =>
 		Object.prototype.hasOwnProperty.call(assignedAreas, `${kind}:${index}`)
 			? assignedAreas[`${kind}:${index}`]
 			: fallback;
+	const editedOutput = <T extends Record<string, unknown>>(kind: string, index: number, item: T): T => {
+		const fields = editedFields?.[`${kind}:${index}`];
+		if (!fields) return item;
+		const next = { ...item, ...fields } as T & { title?: string; content?: string; tags?: string[]; due_date?: string | null };
+		if (typeof next.title === "string") next.title = next.title.trim();
+		if (typeof next.content === "string") next.content = next.content.trim();
+		if (next.due_date !== undefined && next.due_date !== null && !/^\d{4}-\d{2}-\d{2}$/.test(next.due_date)) next.due_date = null;
+		if (Array.isArray(next.tags)) next.tags = next.tags.map((tag) => tag.trim()).filter(Boolean);
+		return next;
+	};
 
 	const approvedSuggestionCount = suggestions.filter((item) =>
 		Boolean(approved[suggestionKey(item)]),
@@ -293,12 +334,20 @@ export default function CapturePage() {
 				}
 
 				tasks.forEach(({ item, index }, outputIndex) => {
-					assignments[`task:${outputIndex}`] = selectedArea(
-						"task",
-						index,
-						item.area_id,
-					);
-					assignments[`task-project:${outputIndex}`] = item.project_id;
+					const area = selectedArea("task", index, item.area_id);
+					const selectedProject = Object.prototype.hasOwnProperty.call(
+						assignedProjects,
+						`task:${index}`,
+					)
+						? assignedProjects[`task:${index}`]
+						: item.project_id;
+					assignments[`task:${outputIndex}`] = area;
+					assignments[`task-project:${outputIndex}`] =
+						selectedProject && projects.some(
+							(project) => project.id === selectedProject && project.area_id === area,
+						)
+							? selectedProject
+							: null;
 				});
 				ideas.forEach(({ item, index }, outputIndex) => {
 					assignments[`idea:${outputIndex}`] = selectedArea(
@@ -338,8 +387,10 @@ export default function CapturePage() {
 					processedNoteHash: resultNoteHash,
 					approved,
 					assignedAreas,
+					assignedProjects,
 					rejectedItems,
 					editedValues,
+					editedFields,
 					projectAreas,
 				});
 				const response = await fetch("/api/captures/save", {
@@ -350,9 +401,21 @@ export default function CapturePage() {
 						raw_note: rawNote,
 						confirmed_output: {
 							...result,
-							tasks: tasks.map(({ item }) => item),
-							ideas: ideas.map(({ item }) => item),
-							second_brain: secondBrain.map(({ item }) => item),
+							tasks: tasks.map(({ item, index }) => ({
+								...editedOutput("task", index, item),
+								area_id: selectedArea("task", index, item.area_id),
+								project_id: Object.prototype.hasOwnProperty.call(assignedProjects, `task:${index}`)
+									? assignedProjects[`task:${index}`]
+									: item.project_id,
+							})),
+							ideas: ideas.map(({ item, index }) => ({
+								...editedOutput("idea", index, item),
+								area_id: selectedArea("idea", index, item.area_id),
+							})),
+							second_brain: secondBrain.map(({ item, index }) => ({
+								...editedOutput("knowledge", index, item),
+								area_id: selectedArea("knowledge", index, item.area_id),
+							})),
 							suggestions,
 						},
 						assignments,
@@ -368,18 +431,24 @@ export default function CapturePage() {
 					throw new Error(message);
 				}
 				const receipt = parseSaveCaptureResult(body);
-				const inboxMessage =
-					receipt.inbox_item_ids.length === 0
-						? "No quedó nada pendiente en Inbox."
-						: `${receipt.inbox_item_ids.length} elemento(s) quedaron en Inbox.`;
-				dispatchWorkflow({
-					type: "SAVE_SUCCEEDED",
-					message: `${receipt.existing ? "La captura ya estaba guardada." : "Captura guardada."} ${inboxMessage} Recibo: ${receipt.batch_id}`,
-				});
+				const message = formatSaveSuccess(
+					{
+						tasks: tasks.length,
+						ideas: ideas.length,
+						secondBrain: secondBrain.length,
+						suggestions: approvedSuggestionCount,
+						inbox: receipt.inbox_item_ids.length,
+					},
+					receipt.existing,
+				);
+				dispatchWorkflow({ type: "SAVE_SUCCEEDED", message });
 				dispatchReview({ type: "reset-after-save" });
 				setIdempotencyKey("");
 				captureKeyRawNote.current = null;
 				clearCaptureDraft();
+				requestAnimationFrame(() =>
+					document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Nota en Markdown"]')?.focus(),
+				);
 			} catch (caught) {
 				dispatchWorkflow({
 					type: "SAVE_FAILED",
@@ -435,6 +504,17 @@ export default function CapturePage() {
 		projects.map((project) => [project.id, project.name]),
 	);
 
+	function startAnotherCapture() {
+		dispatchReview({ type: "reset-after-save" });
+		dispatchWorkflow({ type: "NOTE_CHANGED" });
+		setIdempotencyKey("");
+		captureKeyRawNote.current = null;
+		clearCaptureDraft();
+		requestAnimationFrame(() =>
+			document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Nota en Markdown"]')?.focus(),
+		);
+	}
+
 	return (
 		<div className={`capture-workspace ${result ? "has-result" : "is-empty"}`}>
 			<div className="capture-minimal-shell">
@@ -455,7 +535,7 @@ export default function CapturePage() {
 						maxLength={12000}
 						disabled={processing || saving}
 						variant="minimal"
-						autoFocus={!result}
+						autoFocus={finePointer && !result && !success}
 					/>
 					<div className="capture-minimal-actions">
 						<span className="sr-only">
@@ -467,7 +547,7 @@ export default function CapturePage() {
 							pendingLabel="Ordenando…"
 							successLabel="Ordenado"
 							errorLabel="Reintentar"
-							disabled={loading || processing || saving || !rawNote.trim()}
+							disabled={processing || saving || !rawNote.trim()}
 						>
 							Ordenar
 						</LoadingButton>
@@ -483,38 +563,76 @@ export default function CapturePage() {
 						Estamos ordenando tu captura…
 					</p>
 				)}
-				{error && (
+				{error && !saveError && (
 					<p className="capture-alert capture-alert-error" role="alert">
 						{error}
 					</p>
 				)}
 				{success && (
-					<p className="capture-alert capture-alert-success" role="status">
-						{success}
-					</p>
+					<div
+						ref={successRef}
+						className="capture-alert capture-alert-success"
+						role="status"
+						tabIndex={-1}
+					>
+						<p>{success}</p>
+						<div className="mt-3 flex flex-wrap gap-2">
+							<button type="button" className="btn btn-primary btn-sm" onClick={startAnotherCapture}>
+								Capturar otra
+							</button>
+							<button type="button" className="btn btn-ghost btn-sm" onClick={() => router.push("/inbox")}>
+								Ver Inbox
+							</button>
+						</div>
+					</div>
 				)}
 				{result && (
 					<CaptureReviewPanel
 						result={result}
 						areas={areas}
+						projects={projects}
 						areaNames={areaNames}
 						projectNames={projectNames}
 						suggestions={suggestions}
 						approved={approved}
 						assignedAreas={assignedAreas}
+						assignedProjects={assignedProjects}
 						rejectedItems={rejectedItems}
-						undoToken={undoToken}
 						editingItem={editingItem}
+						undoToken={undoToken}
 						editedValues={editedValues}
+						editedFields={editedFields}
 						projectAreas={projectAreas}
 						saving={saving || processing}
 						canSave={canSave}
-						onAssignedAreaChange={(kind, index, value) =>
+						saveError={saveError}
+						onAssignedAreaChange={(kind, index, value) => {
 							dispatchReview({
 								type: "assign-area",
 								key: `${kind}:${index}`,
 								value,
-							})
+								projectAreasById: Object.fromEntries(
+									projects.map((project) => [project.id, project.area_id]),
+								),
+							});
+							if (kind !== "task") return;
+							const key = `task:${index}`;
+							const currentProject = Object.prototype.hasOwnProperty.call(
+								assignedProjects,
+								key,
+							)
+								? assignedProjects[key]
+								: result.tasks[index]?.project_id ?? null;
+							if (
+								currentProject &&
+								(!value ||
+									projects.find((project) => project.id === currentProject)?.area_id !==
+										value)
+							)
+								dispatchReview({ type: "assign-project", key, value: null });
+						}}
+						onAssignedProjectChange={(index, value) =>
+							dispatchReview({ type: "assign-project", key: `task:${index}`, value })
 						}
 						onApprove={(key, checked) =>
 							dispatchReview({ type: "approve-suggestion", key, checked })
@@ -531,6 +649,9 @@ export default function CapturePage() {
 						}
 						onEditedValueChange={(key, value) =>
 							dispatchReview({ type: "edit-value-changed", key, value })
+						}
+						onEditFieldChange={(key, field, value) =>
+							dispatchReview({ type: "edit-field-changed", key, field, value })
 						}
 						onSaveEdit={saveEdit}
 						onCancelEdit={() => dispatchReview({ type: "cancel-edit" })}

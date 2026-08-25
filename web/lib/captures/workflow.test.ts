@@ -110,6 +110,7 @@ describe("capture workflow reducer", () => {
 			phase: "success",
 			result: null,
 			error: "",
+			saveError: "",
 			success: "Guardada",
 		});
 	});
@@ -218,6 +219,22 @@ describe("capture keyboard shortcut", () => {
 				canSave: false,
 			}),
 		).toBe("process");
+	});
+	it("processes from loading while context is still pending", () => {
+		expect(
+			getCaptureShortcutAction({
+				phase: "loading",
+				hasNote: true,
+				hasResult: false,
+				isEditingItem: false,
+				canSave: false,
+			}),
+		).toBe("process");
+		expect(
+			captureWorkflowReducer(initialCaptureWorkflowState, {
+				type: "PROCESS_STARTED",
+			}),
+		).toMatchObject({ phase: "processing" });
 	});
 
 	it("saves only from a valid review without an item editor open", () => {

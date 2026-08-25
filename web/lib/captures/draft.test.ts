@@ -21,6 +21,7 @@ describe("capture drafts", () => {
 			result: null,
 			approved: {},
 			assignedAreas: {},
+			assignedProjects: {},
 			rejectedItems: {},
 			editedValues: {},
 			projectAreas: {},
@@ -35,6 +36,22 @@ describe("capture drafts", () => {
 			idempotencyKey: "",
 		});
 	});
+	it("defaults assigned projects for an older v1 draft", () => {
+		const legacyDraft = {
+			version: CAPTURE_DRAFT_VERSION,
+			rawNote: "nota",
+			idempotencyKey: "",
+			result: null,
+			approved: {},
+			assignedAreas: {},
+			rejectedItems: {},
+			editedValues: {},
+			projectAreas: {},
+		};
+		expect(readCaptureDraft(JSON.stringify(legacyDraft))).not.toHaveProperty(
+			"assignedProjects",
+		);
+	});
 
 	it("migrates the legacy raw-text draft to CaptureDraft v1", () => {
 		expect(readCaptureDraft("  nota legacy\ncompleta  ")).toEqual({
@@ -44,6 +61,7 @@ describe("capture drafts", () => {
 			result: null,
 			approved: {},
 			assignedAreas: {},
+			assignedProjects: {},
 			rejectedItems: {},
 			editedValues: {},
 			projectAreas: {},

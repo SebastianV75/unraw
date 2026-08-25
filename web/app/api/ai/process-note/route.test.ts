@@ -106,6 +106,19 @@ describe("process-note route", () => {
     );
     expect(rpc).toHaveBeenCalledWith("consume_free_capture");
   });
+  it("passes saved capture preferences to the AI context", async () => {
+    clientFor(
+      { tier: "free", openrouter_token: null, openrouter_model: null, capture_preferences: ["knowledge"] },
+      { consume_free_capture: { data: [{ allowed: true }], error: null } },
+    );
+    expect((await post()).status).toBe(200);
+    expect(processNote).toHaveBeenCalledWith(
+      expect.objectContaining({
+        user_context: expect.objectContaining({ capture_preferences: ["knowledge"] }),
+      }),
+    );
+  });
+
 
   it("uses bounded retrieval context when the flag is enabled", async () => {
     process.env.CAPTURE_CANDIDATE_RETRIEVAL_ENABLED = "true";
@@ -153,6 +166,7 @@ describe("process-note route", () => {
             },
           ],
           timezone: "UTC",
+          capture_preferences: ["tasks", "ideas"],
         },
       }),
     );

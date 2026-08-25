@@ -17,6 +17,7 @@ import Sun4 from "reicon-react/icons/Sun4";
 import { useEffect, useRef, useState } from "react";
 import Logo from "@/components/Logo";
 import { CommandPalette } from "@/components/navigation/CommandPalette";
+import { GlobalCaptureComposer } from "@/components/capture/GlobalCaptureComposer";
 import { createClient } from "@/lib/supabase/client";
 
 const navigation = [
@@ -200,6 +201,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </div>
       </aside>
       <div className="app-shell-command-palette">
+      <div className="app-shell-global-capture">
+        <GlobalCaptureComposer />
+      </div>
         <CommandPalette />
       </div>
       <header className="app-shell-mobile-header">
