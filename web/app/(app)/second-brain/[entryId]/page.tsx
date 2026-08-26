@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { BlockNoteEditor } from "@/components/capture/BlockNoteEditor";
+import { Modal, Button } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import type { Area, SecondBrainEntry } from "@/types";
 
@@ -21,10 +22,11 @@ export default function KnowledgeNotePage() {
 	const [content, setContent] = useState("");
 	const [tags, setTags] = useState("");
 	const [areaId, setAreaId] = useState("");
-	const [ready, setReady] = useState(false);
-	const [saveState, setSaveState] = useState<SaveState>("loading");
-	const [error, setError] = useState("");
-
+		const [ready, setReady] = useState(false);
+		const [saveState, setSaveState] = useState<SaveState>("loading");
+		const [error, setError] = useState("");
+		const [deleteOpen, setDeleteOpen] = useState(false);
+		const [deleting, setDeleting] = useState(false);
 	useEffect(() => {
 		let cancelled = false;
 
@@ -132,7 +134,9 @@ export default function KnowledgeNotePage() {
 	}, [areaId, content, ready, router, tags, title, userId]);
 
 	async function deleteNote() {
-		if (!currentId.current || !window.confirm("¿Eliminar esta nota?")) return;
+		if (!currentId.current || deleting) return;
+		setDeleting(true);
+		setError("");
 		const { error: deleteError } = await createClient()
 			.from("second_brain")
 			.delete()
@@ -140,8 +144,10 @@ export default function KnowledgeNotePage() {
 			.eq("user_id", userId);
 		if (deleteError) {
 			setError("No pudimos eliminar la nota.");
+			setDeleting(false);
 			return;
 		}
+		setDeleteOpen(false);
 		router.replace("/second-brain");
 	}
 
@@ -161,20 +167,28 @@ export default function KnowledgeNotePage() {
 		);
 
 	return (
-		<main className="note-page">
+		<main
+			className="note-page"
+			aria-busy={saveState === "loading" || saveState === "saving"}
+		>
 			<header className="note-page-topbar">
 				<Link className="note-page-back" href="/second-brain">
 					<span aria-hidden="true">←</span> Notas
 				</Link>
 				<div className="note-page-actions">
-					<span className={`note-page-status is-${saveState}`} role="status">
+					<span
+						className={`note-page-status is-${saveState}`}
+						role="status"
+						aria-live="polite"
+					>
 						{saveLabel}
 					</span>
 					{currentId.current && (
 						<button
 							className="note-page-delete"
 							type="button"
-							onClick={deleteNote}
+							onClick={() => setDeleteOpen(true)}
+							disabled={deleting}
 						>
 							Eliminar
 						</button>
@@ -182,7 +196,11 @@ export default function KnowledgeNotePage() {
 				</div>
 			</header>
 
+			<label className="sr-only" htmlFor="note-title">
+				Título de la nota
+			</label>
 			<input
+				id="note-title"
 				className="note-page-title"
 				value={title}
 				onChange={(event) => setTitle(event.target.value)}
@@ -192,9 +210,10 @@ export default function KnowledgeNotePage() {
 			/>
 
 			<div className="note-page-properties">
-				<label>
+				<label htmlFor="note-area">
 					<span>Área</span>
 					<select
+						id="note-area"
 						value={areaId}
 						onChange={(event) => setAreaId(event.target.value)}
 					>
@@ -206,9 +225,10 @@ export default function KnowledgeNotePage() {
 						))}
 					</select>
 				</label>
-				<label>
+				<label htmlFor="note-tags">
 					<span>Etiquetas</span>
 					<input
+						id="note-tags"
 						value={tags}
 						onChange={(event) => setTags(event.target.value)}
 						placeholder="Añadir etiquetas"
@@ -227,6 +247,38 @@ export default function KnowledgeNotePage() {
 			<p className="note-page-hint">
 				Escribe `/` para insertar un bloque. Arrastra para reordenar.
 			</p>
+			<Modal
+				open={deleteOpen}
+				onClose={() => {
+					if (!deleting) setDeleteOpen(false);
+				}}
+				title="¿Eliminar esta nota?"
+			>
+				<p className="py-4 text-sm text-base-content/70">
+					Esta acción no se puede deshacer.
+				</p>
+				{error && (
+					<p className="text-sm text-error" role="alert">
+						{error}
+					</p>
+				)}
+				<div className="modal-action">
+					<Button
+						variant="ghost"
+						onClick={() => setDeleteOpen(false)}
+						disabled={deleting}
+					>
+						Cancelar
+					</Button>
+					<Button
+						variant="danger"
+						onClick={() => void deleteNote()}
+						loading={deleting}
+					>
+						{deleting ? "Eliminando…" : "Eliminar nota"}
+					</Button>
+				</div>
+			</Modal>
 			{error && (
 				<p className="text-sm text-error" role="alert">
 					{error}

@@ -74,6 +74,23 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         event.preventDefault();
         setMoreOpen(false);
         moreButtonRef.current?.focus();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const focusable = Array.from(
+        moreMenuRef.current?.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled])',
+        ) ?? [],
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
       }
     }
 
@@ -148,6 +165,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className={`app-shell ${isCapture ? "is-capture" : ""}`}>
+      <a className="app-skip-link" href="#main-content">
+        Saltar al contenido principal
+      </a>
       <aside className="app-shell-sidebar" aria-label="Navegación principal">
         <Link
           className="app-shell-brand"
@@ -265,6 +285,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             }`}
             type="button"
             aria-expanded={moreOpen}
+            aria-controls="mobile-more-menu"
             aria-current={isMoreActive ? "page" : undefined}
             aria-label="Más opciones de navegación"
             onClick={() => setMoreOpen((open) => !open)}
@@ -280,6 +301,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </button>
           {moreOpen && (
             <nav
+              id="mobile-more-menu"
               ref={moreMenuRef}
               className="app-shell-mobile-more-menu"
               aria-label="Más zonas"

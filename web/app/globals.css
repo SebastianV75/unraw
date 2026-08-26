@@ -140,6 +140,24 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+.app-skip-link {
+  position: fixed;
+  z-index: 100;
+  top: 8px;
+  left: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius-field);
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-size: 14px;
+  font-weight: 600;
+  transform: translateY(-160%);
+}
+
+.app-skip-link:focus-visible {
+  transform: translateY(0);
+}
+
 h1,
 h2,
 h3,
