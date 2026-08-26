@@ -39,7 +39,7 @@ export default function HomePage() {
 				</nav>
 			</header>
 
-			<main>
+			<main id="main-content">
 				<CircleStory />
 
 				<LandingReveal delay={0.04}>

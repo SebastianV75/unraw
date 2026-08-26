@@ -328,7 +328,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           )}
         </div>
       </nav>
-      <main className="app-shell-main">{children}</main>
+      <main id="main-content" className="app-shell-main">{children}</main>
     </div>
   );
 }

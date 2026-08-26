@@ -125,6 +125,14 @@ body {
   min-height: 100%;
 }
 
+html {
+  color-scheme: light;
+}
+
+[data-theme="unraw-dark"] {
+  color-scheme: dark;
+}
+
 body {
   background: var(--bg-page);
   color: var(--text-primary);
