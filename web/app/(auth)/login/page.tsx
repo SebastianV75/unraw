@@ -8,6 +8,7 @@ import { getSafeNextPath } from "@/lib/utils";
 import { InlineValidation } from "@/components/interior/inline-validation";
 import { LoadingButton } from "@/components/interior/loading-button";
 import GoogleButton from "@/components/auth/GoogleButton";
+import { LoginServiceError, submitEmailLogin } from "./login-submit";
 
 function LoginForm() {
 	const searchParams = useSearchParams();
@@ -21,24 +22,37 @@ function LoginForm() {
 	const [loading, setLoading] = useState(false);
 
 	async function handleSubmit() {
-		if (!/\S+@\S+\.\S+/.test(email) || !password) {
-			setError("Escribe un email y una contraseña válidos.");
-			return;
-		}
-		setLoading(true);
 		setError("");
+		setLoading(true);
 
-		const { error: authError } = await createClient().auth.signInWithPassword({
-			email,
-			password,
-		});
-		if (authError) {
-			setError("No pudimos iniciar sesión con esos datos.");
+		try {
+			const result = await submitEmailLogin({
+				email,
+				password,
+				createClient,
+				onSuccess: () => {
+					window.location.assign(getSafeNextPath(searchParams.get("next")));
+				},
+			});
+
+			if (result === "invalid") {
+				setError("Escribe un email y una contraseña válidos.");
+			} else if (result === "credentials-error") {
+				setError("No pudimos iniciar sesión con esos datos.");
+			}
+		} catch (submitError) {
+			if (submitError instanceof LoginServiceError) {
+				setError(
+					"No pudimos conectar con el servicio de autenticación. Comprueba tu conexión e inténtalo de nuevo.",
+				);
+			} else {
+				setError(
+					"No pudimos iniciar sesión. Comprueba tu conexión e inténtalo de nuevo.",
+				);
+			}
+		} finally {
 			setLoading(false);
-			return;
 		}
-
-		window.location.assign(getSafeNextPath(searchParams.get("next")));
 	}
 
 	return (

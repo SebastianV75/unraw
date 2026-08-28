@@ -4,12 +4,27 @@ export type CaptureTelemetryEvent = {
   mode: "legacy" | "retrieval";
   model?: string;
   provider?: "free" | "openrouter";
+  inputLength?: number;
   candidateAreas?: number;
   candidateProjects?: number;
   retrievalElapsedMs?: number;
+  profileElapsedMs?: number;
+  quotaElapsedMs?: number;
   promptAreas?: number;
   promptProjects?: number;
   modelLatencyMs?: number;
+  parseLatencyMs?: number;
+  outputTasks?: number;
+  outputIdeas?: number;
+  outputSecondBrain?: number;
+  outputSuggestions?: number;
+  generatedItems?: number;
+  editedItems?: number;
+  rejectedItems?: number;
+  approvedSuggestions?: number;
+  savedItems?: number;
+  savedToInbox?: number;
+  totalElapsedMs?: number;
   usagePromptTokens?: number;
   usageCompletionTokens?: number;
   usageTotalTokens?: number;
@@ -40,12 +55,27 @@ export function logCaptureTelemetry(
     mode: input.mode === "retrieval" ? "retrieval" : "legacy",
     model: typeof input.model === "string" && input.model.length <= 200 ? input.model : undefined,
     provider: input.provider === "free" || input.provider === "openrouter" ? input.provider : undefined,
+    inputLength: safeNumber(input.inputLength),
     candidateAreas: safeNumber(input.candidateAreas),
     candidateProjects: safeNumber(input.candidateProjects),
     retrievalElapsedMs: safeNumber(input.retrievalElapsedMs),
+    profileElapsedMs: safeNumber(input.profileElapsedMs),
+    quotaElapsedMs: safeNumber(input.quotaElapsedMs),
     promptAreas: safeNumber(input.promptAreas),
     promptProjects: safeNumber(input.promptProjects),
+    generatedItems: safeNumber(input.generatedItems),
+    editedItems: safeNumber(input.editedItems),
+    rejectedItems: safeNumber(input.rejectedItems),
+    approvedSuggestions: safeNumber(input.approvedSuggestions),
+    savedItems: safeNumber(input.savedItems),
+    savedToInbox: safeNumber(input.savedToInbox),
     modelLatencyMs: safeNumber(input.modelLatencyMs),
+    parseLatencyMs: safeNumber(input.parseLatencyMs),
+    outputTasks: safeNumber(input.outputTasks),
+    outputIdeas: safeNumber(input.outputIdeas),
+    outputSecondBrain: safeNumber(input.outputSecondBrain),
+    outputSuggestions: safeNumber(input.outputSuggestions),
+    totalElapsedMs: safeNumber(input.totalElapsedMs),
     usagePromptTokens: safeNumber(input.usagePromptTokens),
     usageCompletionTokens: safeNumber(input.usageCompletionTokens),
     usageTotalTokens: safeNumber(input.usageTotalTokens),

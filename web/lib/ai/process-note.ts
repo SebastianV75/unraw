@@ -148,6 +148,13 @@ export type ProcessNoteTelemetry = {
 		usageCompletionTokens?: number;
 		usageTotalTokens?: number;
 	}) => void;
+	onParseComplete?: (details: {
+		parseLatencyMs: number;
+		outputTasks: number;
+		outputIdeas: number;
+		outputSecondBrain: number;
+		outputSuggestions: number;
+	}) => void;
 };
 type ProcessNoteContext = NonNullable<ProcessNoteInput["user_context"]>;
 
@@ -281,6 +288,7 @@ export async function processNote({
 	baseURL,
 	model,
 	onModelComplete,
+	onParseComplete,
 }: ProcessNoteInput & {
 	apiKey: string;
 	baseURL?: string;
@@ -311,7 +319,6 @@ export async function processNote({
 	} catch {
 		throw new ProcessNoteError("The AI service could not process this note.");
 	}
-
 	onModelComplete?.({
 		modelLatencyMs: performance.now() - modelStartedAt,
 		usagePromptTokens: response.usage?.prompt_tokens,
@@ -321,8 +328,17 @@ export async function processNote({
 	const content = response.choices[0]?.message?.content;
 	if (!content)
 		throw new ProcessNoteError("The AI service returned an empty result.");
+	const parseStartedAt = performance.now();
 	try {
-		return parseModelOutput(content);
+		const output = parseModelOutput(content);
+		onParseComplete?.({
+			parseLatencyMs: performance.now() - parseStartedAt,
+			outputTasks: output.tasks.length,
+			outputIdeas: output.ideas.length,
+			outputSecondBrain: output.second_brain.length,
+			outputSuggestions: output.suggestions.length,
+		});
+		return output;
 	} catch (error) {
 		if (error instanceof z.ZodError) {
 			let shape: Record<string, string> = {};

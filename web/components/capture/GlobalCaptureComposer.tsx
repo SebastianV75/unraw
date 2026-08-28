@@ -3,6 +3,44 @@
 import { useEffect, useRef, useState } from "react";
 import { createIdempotencyKey } from "@/lib/captures/idempotency";
 
+export class CaptureHttpError extends Error {
+	readonly status: number;
+
+	constructor(status: number, message: string) {
+		super(message);
+		this.name = "CaptureHttpError";
+		this.status = status;
+	}
+}
+
+export async function parseCaptureResponse(response: Response): Promise<unknown> {
+	let body: unknown;
+	try {
+		body = await response.json();
+	} catch {
+		throw new CaptureHttpError(
+			response.status,
+			`El servidor devolvió una respuesta no válida (HTTP ${response.status}).`,
+		);
+	}
+	if (!response.ok) {
+		const message =
+			typeof body === "object" &&
+			body !== null &&
+			"error" in body &&
+			typeof body.error === "string"
+				? body.error
+				: `No pudimos guardar la captura (HTTP ${response.status}).`;
+		throw new CaptureHttpError(response.status, message);
+	}
+	return body;
+}
+
+export function captureErrorMessage(error: unknown) {
+	if (error instanceof CaptureHttpError) return error.message;
+	if (error instanceof TypeError) return "No se pudo conectar con el servidor.";
+	return error instanceof Error ? error.message : "No pudimos guardar la captura.";
+}
 function isEditableTarget(target: EventTarget | null) {
 	return typeof HTMLElement !== "undefined" && target instanceof HTMLElement && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
 }
@@ -60,13 +98,12 @@ export function GlobalCaptureComposer() {
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ idempotency_key: createIdempotencyKey(), raw_note: rawNote, confirmed_output: { tasks: [], ideas: [], second_brain: [], suggestions: [] }, assignments: {}, fallback_to_inbox: true }),
 			});
-			const body = (await response.json()) as { error?: string };
-			if (!response.ok) throw new Error(body.error || "No pudimos guardar la captura.");
+			await parseCaptureResponse(response);
 			setNote("");
 			setStatus("Guardado en Inbox");
 			requestAnimationFrame(() => textareaRef.current?.focus());
 		} catch (error) {
-			setStatus(error instanceof Error ? error.message : "No pudimos guardar la captura.");
+			setStatus(captureErrorMessage(error));
 		} finally {
 			setSaving(false);
 		}

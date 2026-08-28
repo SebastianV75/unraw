@@ -93,7 +93,7 @@ beforeEach(() => {
 });
 
 describe("process-note route", () => {
-  it("uses the free model and consumes quota", async () => {
+  it("uses gpt-4o-mini for free captures and consumes quota", async () => {
     const { rpc } = clientFor(
       { tier: "free", openrouter_token: null, openrouter_model: null },
       {
@@ -102,7 +102,7 @@ describe("process-note route", () => {
     );
     expect((await post()).status).toBe(200);
     expect(processNote).toHaveBeenCalledWith(
-      expect.objectContaining({ model: "gpt-5-nano", baseURL: undefined }),
+      expect.objectContaining({ model: "gpt-4o-mini", baseURL: undefined }),
     );
     expect(rpc).toHaveBeenCalledWith("consume_free_capture");
   });
@@ -426,5 +426,107 @@ describe("process-note route", () => {
     expect((await post()).status).toBe(200);
     expect(rpc).not.toHaveBeenCalled();
     expect(adminRpc).not.toHaveBeenCalled();
+  });
+  it("consolidates callback metrics in the final event without sensitive content", async () => {
+    clientFor({
+      tier: "openrouter",
+      openrouter_token: "ciphertext",
+      openrouter_model: "openai/gpt-5-nano",
+    });
+    processNote.mockImplementation(async (input: {
+      onModelComplete?: (details: {
+        modelLatencyMs: number;
+        usagePromptTokens: number;
+        usageCompletionTokens: number;
+        usageTotalTokens: number;
+      }) => void;
+      onParseComplete?: (details: {
+        parseLatencyMs: number;
+        outputTasks: number;
+        outputIdeas: number;
+        outputSecondBrain: number;
+        outputSuggestions: number;
+      }) => void;
+    }) => {
+      input.onModelComplete?.({
+        modelLatencyMs: 12,
+        usagePromptTokens: 10,
+        usageCompletionTokens: 8,
+        usageTotalTokens: 18,
+      });
+      input.onParseComplete?.({
+        parseLatencyMs: 3,
+        outputTasks: 1,
+        outputIdeas: 2,
+        outputSecondBrain: 3,
+        outputSuggestions: 4,
+      });
+      return {
+        tasks: [],
+        ideas: [],
+        second_brain: [],
+        suggestions: [],
+      };
+    });
+
+    expect((await post()).status).toBe(200);
+    const total = logCaptureTelemetry.mock.calls.find(
+      ([event]) => event.event === "capture_complete",
+    )?.[0];
+    expect(total).toEqual(
+      expect.objectContaining({
+        event: "capture_complete",
+        modelLatencyMs: 12,
+        parseLatencyMs: 3,
+        usagePromptTokens: 10,
+        usageCompletionTokens: 8,
+        usageTotalTokens: 18,
+        outputTasks: 1,
+        outputIdeas: 2,
+        outputSecondBrain: 3,
+        outputSuggestions: 4,
+      }),
+    );
+    expect(JSON.stringify(total)).not.toContain(body.raw_note);
+    expect(JSON.stringify(total)).not.toContain("prompt");
+    expect(JSON.stringify(total)).not.toContain("modelContent");
+  });
+
+  it("records a total duration metric without sensitive note content on success", async () => {
+    clientFor({
+      tier: "openrouter",
+      openrouter_token: "ciphertext",
+      openrouter_model: "openai/gpt-5-nano",
+    });
+    expect((await post()).status).toBe(200);
+    const total = logCaptureTelemetry.mock.calls.find(
+      ([event]) => event.event === "capture_complete",
+    )?.[0];
+    expect(total).toEqual(
+      expect.objectContaining({
+        totalElapsedMs: expect.any(Number),
+        inputLength: body.raw_note.length,
+      }),
+    );
+    expect(JSON.stringify(total)).not.toContain(body.raw_note);
+    expect(JSON.stringify(total)).not.toContain("prompt");
+  });
+
+  it("records total duration and an error classification when processing fails", async () => {
+    clientFor({
+      tier: "openrouter",
+      openrouter_token: "ciphertext",
+      openrouter_model: "openai/gpt-5-nano",
+    });
+    processNote.mockRejectedValue(new Error("provider failed"));
+    expect((await post()).status).toBe(500);
+    expect(logCaptureTelemetry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "capture_complete",
+        totalElapsedMs: expect.any(Number),
+        errorClass: "http_500",
+      }),
+      "error",
+    );
   });
 });

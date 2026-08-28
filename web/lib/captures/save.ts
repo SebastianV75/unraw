@@ -2,9 +2,15 @@ import { z } from "zod"
 import { createClient, getUser } from "@/lib/supabase/server"
 import { processNoteOutputSchema } from "@/lib/ai/process-note"
 import { parseSaveCaptureResult } from "@/lib/captures/receipt"
+import { logCaptureTelemetry } from "@/lib/captures/telemetry"
 import type { SaveCaptureInput, SaveCaptureResult } from "@/types"
-
-const inputSchema = z.object({ idempotency_key: z.string().uuid(), raw_note: z.string().min(1).max(12000).refine((value) => value.trim().length > 0, "A note is required."), confirmed_output: processNoteOutputSchema, assignments: z.record(z.string(), z.string().uuid().nullable()), fallback_to_inbox: z.boolean().default(false) })
+const feedbackSchema = z.object({
+  generatedItems: z.number().finite().int().nonnegative(),
+  editedItems: z.number().finite().int().nonnegative(),
+  rejectedItems: z.number().finite().int().nonnegative(),
+  approvedSuggestions: z.number().finite().int().nonnegative(),
+})
+const inputSchema = z.object({ idempotency_key: z.string().uuid(), raw_note: z.string().min(1).max(12000).refine((value) => value.trim().length > 0, "A note is required."), confirmed_output: processNoteOutputSchema, assignments: z.record(z.string(), z.string().uuid().nullable()), fallback_to_inbox: z.boolean().default(false), feedback: feedbackSchema.optional() })
 
 const FALLBACK_TITLE = "Captura original"
 const FALLBACK_TITLE_MAX_LENGTH = 96
@@ -71,5 +77,15 @@ export async function saveCapture(body: unknown): Promise<SaveCaptureResult> {
     input.confirmed_output.second_brain.length === 0
   const { data, error } = await supabase.rpc("save_capture", { p_idempotency_key: input.idempotency_key, p_raw_note: input.raw_note, p_tasks: tasks, p_ideas: ideas, p_second_brain: secondBrain, p_inbox: fallbackInbox ? [{ kind: "knowledge", title: deriveCaptureTitle(input.raw_note), content: input.raw_note }] : [], p_output_snapshot: outputSnapshot, p_approved_suggestions: approved })
   if (error) throw new Error(error.message)
-  return parseSaveCaptureResult(data)
+  const receipt = parseSaveCaptureResult(data)
+  const feedback = input.feedback
+  logCaptureTelemetry({
+    event: "capture_saved",
+    correlationId: input.idempotency_key,
+    mode: "legacy",
+    ...(feedback ?? {}),
+    savedItems: tasks.length + ideas.length + secondBrain.length,
+    savedToInbox: receipt.inbox_item_ids.length,
+  })
+  return receipt
 }

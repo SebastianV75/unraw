@@ -43,12 +43,19 @@ export type CaptureAssignments = Record<string, string | null>;
 export type CaptureSnapshot = CaptureOutput & {
 	assignments: CaptureAssignments;
 };
+export type CaptureReviewFeedback = {
+	generatedItems: number;
+	editedItems: number;
+	rejectedItems: number;
+	approvedSuggestions: number;
+};
 export type SaveCaptureInput = {
 	idempotency_key: string;
 	raw_note: string;
 	confirmed_output: CaptureOutput;
 	assignments: CaptureAssignments;
 	fallback_to_inbox?: boolean;
+	feedback?: CaptureReviewFeedback;
 };
 export type SaveCaptureResult = {
 	batch_id: string;

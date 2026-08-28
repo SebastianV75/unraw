@@ -144,17 +144,74 @@ describe("saveCapture reliability policy", () => {
 		).rejects.toThrow("save failed");
 	});
 
-	it("rejects a successful RPC response without a durable receipt", async () => {
-		mocks.rpc.mockResolvedValueOnce({ data: { ok: true }, error: null });
+	it("emits one privacy-safe save event only after a successful receipt", async () => {
+		const info = vi.spyOn(console, "info").mockImplementation(() => undefined);
+		await saveCapture({
+			idempotency_key: "00000000-0000-0000-0000-000000000004",
+			raw_note: "secret raw note",
+			confirmed_output: emptyOutput,
+			assignments: {},
+			fallback_to_inbox: true,
+			feedback: {
+				generatedItems: 4,
+				editedItems: 1,
+				rejectedItems: 2,
+				approvedSuggestions: 3,
+			},
+		});
+		expect(info).toHaveBeenCalledTimes(1);
+		const serialized = JSON.stringify(info.mock.calls[0]);
+		expect(serialized).toContain('"event":"capture_saved"');
+		expect(serialized).toContain('"savedItems":0');
+		expect(serialized).toContain('"savedToInbox":1');
+		expect(serialized).toContain('"generatedItems":4');
+		expect(serialized).not.toContain("secret raw note");
+		info.mockRestore();
+	});
 
+	it("rejects invalid feedback counters without calling the save RPC", async () => {
 		await expect(
 			saveCapture({
-				idempotency_key: "00000000-0000-0000-0000-000000000004",
+				idempotency_key: "00000000-0000-0000-0000-000000000005",
 				raw_note: "nota",
 				confirmed_output: emptyOutput,
 				assignments: {},
 				fallback_to_inbox: true,
+				feedback: {
+					generatedItems: -1,
+					editedItems: 0,
+					rejectedItems: 0,
+					approvedSuggestions: 0,
+				},
 			}),
-		).rejects.toThrow("recibo de guardado válido");
+		).rejects.toThrow();
+		expect(mocks.rpc).not.toHaveBeenCalled();
+	});
+	it("does not emit a save event when the RPC fails", async () => {
+		const info = vi.spyOn(console, "info").mockImplementation(() => undefined);
+		mocks.rpc.mockResolvedValueOnce({ data: null, error: { message: "save failed" } });
+		await expect(
+			saveCapture({
+				idempotency_key: "00000000-0000-0000-0000-000000000006",
+				raw_note: "nota",
+				confirmed_output: {
+					tasks: [{
+						title: "Tarea",
+						due_date: null,
+						due_at: null,
+						area_id: null,
+						project_id: null,
+						suggested_new_area: null,
+						suggested_new_project: null,
+					}],
+					ideas: [],
+					second_brain: [],
+					suggestions: [],
+				},
+				assignments: {},
+			}),
+		).rejects.toThrow("save failed");
+		expect(info).not.toHaveBeenCalled();
+		info.mockRestore();
 	});
 });

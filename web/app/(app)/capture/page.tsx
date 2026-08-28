@@ -317,6 +317,13 @@ export default function CapturePage() {
 				const approvedSuggestionCount = suggestions.filter((item) =>
 					Boolean(approved[suggestionKey(item)]),
 				).length;
+				const feedback = {
+					generatedItems:
+						result.tasks.length + result.ideas.length + result.second_brain.length,
+					editedItems: Object.keys(editedFields ?? {}).length,
+					rejectedItems: Object.values(rejectedItems).filter(Boolean).length,
+					approvedSuggestions: approvedSuggestionCount,
+				};
 				const fallbackToInbox =
 					result.tasks.length === 0 &&
 					result.ideas.length === 0 &&
@@ -420,6 +427,7 @@ export default function CapturePage() {
 						},
 						assignments,
 						fallback_to_inbox: fallbackToInbox,
+						feedback,
 					}),
 				});
 				const body: unknown = await response.json();
