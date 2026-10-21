@@ -14,16 +14,9 @@ FROM dependencies AS builder
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY web ./web
 
-# Only public browser configuration belongs in build arguments.
-ARG NEXT_PUBLIC_APP_URL
-ARG NEXT_PUBLIC_SUPABASE_URL
-ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
-ARG NEXT_PUBLIC_POSTHOG_KEY
-ARG NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
-RUN : "${NEXT_PUBLIC_APP_URL:?Set NEXT_PUBLIC_APP_URL as a build variable}" \
-      "${NEXT_PUBLIC_SUPABASE_URL:?Set NEXT_PUBLIC_SUPABASE_URL as a build variable}" \
-      "${NEXT_PUBLIC_SUPABASE_ANON_KEY:?Set NEXT_PUBLIC_SUPABASE_ANON_KEY as a build variable}" \
-    && yarn workspace web build
+# Public configuration is injected by the dynamic layout at runtime.
+# Private server credentials are never needed by the image build.
+RUN yarn workspace web build
 
 FROM node:22-bookworm-slim AS runner
 WORKDIR /app

@@ -42,3 +42,12 @@ describe("search route protection", () => {
     expect(response.headers.get("location")).toBeNull()
   })
 })
+
+it("uses the configured public origin behind a container proxy", async () => {
+  vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://public.unraw.test");
+  const response = await middleware(new NextRequest("http://localhost:3000/capture?draft=1"));
+  const location = new URL(response.headers.get("location")!);
+  expect(location.origin).toBe("https://public.unraw.test");
+  expect(location.pathname).toBe("/login");
+  expect(location.searchParams.get("next")).toBe("/capture?draft=1");
+});

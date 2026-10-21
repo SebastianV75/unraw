@@ -1,3 +1,4 @@
+import { getPublicEnv } from "@/lib/public-env";
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
@@ -25,7 +26,8 @@ function redirectWithCookies(
 	request: NextRequest,
 	pathname: string,
 ) {
-	const url = request.nextUrl.clone();
+	const url = new URL(request.nextUrl.pathname + request.nextUrl.search,
+    getPublicEnv("NEXT_PUBLIC_APP_URL") || request.nextUrl.origin);
 	url.pathname = pathname;
 	return copyCookies(response, NextResponse.redirect(url));
 }
@@ -41,8 +43,8 @@ export async function middleware(request: NextRequest) {
 	const isProtected = isAppRoute || isOnboarding;
 	const shouldCheckProfile = isProtected || isRoot;
 
-	const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-	const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+	const url = getPublicEnv("NEXT_PUBLIC_SUPABASE_URL");
+	const anonKey = getPublicEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
 
 	if (!url || !anonKey) {
 		throw new Error("Missing Supabase environment variables");
@@ -71,7 +73,8 @@ export async function middleware(request: NextRequest) {
 	} = await supabase.auth.getUser();
 
 	if (isProtected && !user) {
-		const loginUrl = request.nextUrl.clone();
+		const loginUrl = new URL(request.nextUrl.pathname + request.nextUrl.search,
+      getPublicEnv("NEXT_PUBLIC_APP_URL") || request.nextUrl.origin);
 		loginUrl.pathname = "/login";
 		loginUrl.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
 		return copyCookies(response, NextResponse.redirect(loginUrl));

@@ -1,3 +1,4 @@
+import { getPublicEnv, publicEnvScript } from "@/lib/public-env";
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import localFont from "next/font/local";
@@ -24,9 +25,12 @@ const departureMono = localFont({
 	display: "swap",
 });
 
+// Runtime configuration must never be captured in prerendered HTML.
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
 	metadataBase: new URL(
-		process.env.NEXT_PUBLIC_APP_URL || config.app.defaultUrl,
+		getPublicEnv("NEXT_PUBLIC_APP_URL") || config.app.defaultUrl,
 	),
 	title: {
 		default: config.app.name,
@@ -67,6 +71,9 @@ export default function RootLayout({
 			suppressHydrationWarning
 			className={`${geist.variable} ${geistMono.variable} ${departureMono.variable}`}
 		>
+			<head>
+				<script id="unraw-public-env" dangerouslySetInnerHTML={{ __html: publicEnvScript() }} />
+			</head>
 			<body className="bg-base-100 text-base-content">
 				<a
 					href="#main-content"
