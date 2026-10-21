@@ -7,6 +7,7 @@ const PROTECTED_PREFIXES = [
 	"/inbox",
 	"/areas",
 	"/second-brain",
+	"/search",
 	"/settings",
 ];
 

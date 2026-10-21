@@ -130,6 +130,7 @@ export default function CapturePage() {
 		rawNote,
 		idempotencyKey,
 		result,
+		approved,
 		assignedAreas,
 		assignedProjects,
 		rejectedItems,
