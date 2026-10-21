@@ -12,6 +12,8 @@ type MarkdownRendererProps = {
 	headingMode?: "document" | "card";
 };
 
+const remarkPlugins = [remarkGfm];
+
 const safeUrl = (url: string) =>
 	/^(https?:|mailto:|tel:|#|\/)/i.test(url) ? url : "";
 
@@ -22,7 +24,7 @@ const baseComponents: Components = {
 		</a>
 	),
 	img: ({ src, alt, ...props }) =>
-		src ? <img src={src} alt={alt ?? ""} loading="lazy" {...props} /> : null,
+		src ? <img src={src} alt={alt ?? ""} loading="lazy" decoding="async" {...props} /> : null,
 };
 
 const cardComponents: Components = {
@@ -35,7 +37,7 @@ const cardComponents: Components = {
 	h6: ({ children }) => <div className="markdown-card-heading">{children}</div>,
 };
 
-export function MarkdownRenderer({
+export const MarkdownRenderer = React.memo(function MarkdownRenderer({
 	content,
 	compact = false,
 	headingMode = "document",
@@ -48,7 +50,7 @@ export function MarkdownRenderer({
 			}
 		>
 			<ReactMarkdown
-				remarkPlugins={[remarkGfm]}
+				remarkPlugins={remarkPlugins}
 				urlTransform={safeUrl}
 				components={cardMode ? cardComponents : baseComponents}
 			>
@@ -56,4 +58,4 @@ export function MarkdownRenderer({
 			</ReactMarkdown>
 		</div>
 	);
-}
+});

@@ -23,6 +23,8 @@ const mocks = vi.hoisted(() => ({
 	createClient: vi.fn(),
 	getUser: vi.fn(),
 	rpc: vi.fn(),
+	from: vi.fn(),
+	lookup: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/server", () => ({
@@ -39,18 +41,11 @@ const emptyOutput = {
 
 function setupSupabase() {
 	mocks.getUser.mockResolvedValue({ id: "user-1" });
-	mocks.createClient.mockResolvedValue({
-		from: (table: string) => ({
-			select: () => ({
-				eq: () =>
-					Promise.resolve({
-						data: table === "areas" ? [] : [],
-						error: null,
-					}),
-			}),
-		}),
-		rpc: mocks.rpc,
-	});
+	mocks.lookup.mockResolvedValue({ data: [], error: null });
+	mocks.from.mockImplementation(() => ({
+		select: () => ({ eq: () => ({ in: mocks.lookup }) }),
+	}));
+	mocks.createClient.mockResolvedValue({ from: mocks.from, rpc: mocks.rpc });
 }
 
 describe("saveCapture reliability policy", () => {
@@ -98,6 +93,53 @@ describe("saveCapture reliability policy", () => {
 				],
 			}),
 		);
+	});
+
+	it("skips catalog queries for a quick Inbox capture", async () => {
+		await saveCapture({
+			idempotency_key: "00000000-0000-0000-0000-000000000010",
+			raw_note: "nota", confirmed_output: emptyOutput,
+			assignments: {}, fallback_to_inbox: true,
+		});
+		expect(mocks.from).not.toHaveBeenCalled();
+	});
+
+	it("validates repeated assignments in one bounded query and fails before saving on lookup error", async () => {
+		const areaId = "00000000-0000-0000-0000-000000000011";
+		mocks.lookup.mockResolvedValueOnce({ data: null, error: { message: "offline" } });
+		await expect(saveCapture({
+			idempotency_key: "00000000-0000-0000-0000-000000000012",
+			raw_note: "nota",
+			confirmed_output: { ...emptyOutput, ideas: [
+				{ content: "uno", area_id: areaId, suggested_new_area: null },
+				{ content: "dos", area_id: areaId, suggested_new_area: null },
+			] }, assignments: {},
+		})).rejects.toThrow("No pudimos validar");
+		expect(mocks.from).toHaveBeenCalledTimes(1);
+		expect(mocks.lookup).toHaveBeenCalledWith("id", [areaId]);
+		expect(mocks.rpc).not.toHaveBeenCalled();
+	});
+
+	it("preserves valid area and project assignments with bounded lookups", async () => {
+		const areaId = "00000000-0000-0000-0000-000000000021";
+		const projectId = "00000000-0000-0000-0000-000000000022";
+		mocks.lookup
+			.mockResolvedValueOnce({ data: [{ id: areaId }], error: null })
+			.mockResolvedValueOnce({ data: [{ id: projectId, area_id: areaId }], error: null });
+		await saveCapture({
+			idempotency_key: "00000000-0000-0000-0000-000000000023",
+			raw_note: "nota",
+			confirmed_output: { ...emptyOutput, tasks: [{
+				title: "Tarea", area_id: null, project_id: null,
+				due_date: null, due_at: null, suggested_new_area: null, suggested_new_project: null,
+			}] },
+			assignments: { "task:0": areaId, "task-project:0": projectId },
+		});
+		expect(mocks.lookup).toHaveBeenNthCalledWith(1, "id", [areaId]);
+		expect(mocks.lookup).toHaveBeenNthCalledWith(2, "id", [projectId]);
+		expect(mocks.rpc).toHaveBeenCalledWith("save_capture", expect.objectContaining({
+			p_tasks: [expect.objectContaining({ area_id: areaId, project_id: projectId })],
+		}));
 	});
 
 	it("does not create fallback when all original results were manually rejected", async () => {

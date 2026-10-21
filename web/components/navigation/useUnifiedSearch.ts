@@ -49,7 +49,9 @@ function writeCache(key: string, results: SearchResult[]) {
 export function useUnifiedSearch(
 	query: string,
 	mode: SearchMode = "compact",
+	enabled = true,
 ): UnifiedSearchResult {
+	const normalizedQuery = query.trim();
 	const [state, setState] = useState<UnifiedSearchState>("idle");
 	const [results, setResults] = useState<SearchResult[]>([]);
 	const [error, setError] = useState<string | null>(null);
@@ -84,13 +86,12 @@ export function useUnifiedSearch(
 	}, []);
 
 	useEffect(() => {
-		const normalizedQuery = query.trim();
 		const requestId = ++requestIdRef.current;
 		const currentAuthGeneration = authGenerationRef.current;
 		controllerRef.current?.abort();
 		controllerRef.current = null;
 
-		if (!normalizedQuery) {
+		if (!enabled || !normalizedQuery) {
 			setState("idle");
 			setResults([]);
 			setError(null);
@@ -161,7 +162,7 @@ export function useUnifiedSearch(
 			controllerRef.current?.abort();
 			controllerRef.current = null;
 		};
-	}, [authGeneration, mode, query]);
+	}, [authGeneration, enabled, mode, normalizedQuery]);
 
 	return { state, results, error };
 }

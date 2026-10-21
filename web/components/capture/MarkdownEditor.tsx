@@ -12,7 +12,11 @@ import TextBold from "reicon-react/icons/TextBold";
 import TextItalic from "reicon-react/icons/TextItalic";
 import TextX from "reicon-react/icons/TextX";
 import type { IconComponent } from "reicon-react/createIcon";
-import { MarkdownRenderer } from "./MarkdownRenderer";
+import dynamic from "next/dynamic";
+
+const MarkdownRenderer = dynamic(() => import("./MarkdownRenderer").then((module) => module.MarkdownRenderer), {
+	loading: () => <p role="status">Cargando vista previa…</p>,
+});
 
 type MarkdownEditorProps = {
 	value: string;

@@ -41,7 +41,7 @@ unraw/
 └── package.json        # workspace Yarn y scripts principales
 ```
 
-**Stack principal:** Next.js 15, React 19, TypeScript, Tailwind CSS 4, DaisyUI, Motion, Supabase PostgreSQL/Auth, OpenAI/OpenRouter, React Markdown y Resend.
+**Stack principal:** Next.js 15, React 19, TypeScript, Tailwind CSS 4, DaisyUI, Motion, Supabase PostgreSQL/Auth, OpenAI/OpenRouter y React Markdown. El workspace `docs` mantiene su propio procesamiento MDX; `web` incluye un receptor de webhooks de Resend.
 
 La base de datos aplica Row Level Security (RLS) para que cada usuario solo pueda acceder a sus propios perfiles, áreas, proyectos, tareas, ideas y notas de conocimiento. Las migraciones también crean las funciones, índices y relaciones necesarias.
 
@@ -82,6 +82,10 @@ cp web/.env.example web/.env.local
 Para usar Supabase completamente en local, instala la Supabase CLI y ejecuta `supabase start`. La configuración incluida usa PostgreSQL 15 y define el callback local de autenticación; Docker y la CLI no son necesarios si utilizas Supabase Cloud.
 
 ## Configuración
+
+Para alojar la aplicación web en un servidor propio, consulta la
+[guía de Docker y Coolify](DEPLOY_COOLIFY.md). El Dockerfile de la raíz compila
+`web` y ejecuta su servidor de producción; Supabase se configura por separado.
 
 La plantilla base de variables es [`web/.env.example`](web/.env.example); algunas rutas específicas admiten variables adicionales. Nunca publiques secretos ni expongas una service-role key en el navegador.
 
@@ -125,6 +129,9 @@ Desde la raíz del repositorio:
 yarn dev       # servidor Next.js en modo desarrollo
 yarn build     # build de producción
 yarn start     # arranca la build de producción
+yarn lint      # ESLint de web, sin warnings
+yarn typecheck # comprobación de tipos de web
+yarn test      # pruebas de web
 ```
 
 Para ejecutar pruebas o usar scripts específicos del workspace:
@@ -135,6 +142,16 @@ yarn workspace web lint
 ```
 
 También puedes usar `yarn workspace web dev`, `yarn workspace web build` y `yarn workspace web start`.
+
+GitHub Actions comprueba instalación reproducible, lint de ambos workspaces,
+tipos, pruebas y builds de `web` y `docs`. Consulta la
+[auditoría previa al despliegue](AUDIT.md) para conocer las correcciones,
+los límites de la revisión y los pendientes antes de configurar Coolify.
+
+El monorepo mantiene resoluciones de PostCSS, Nano ID, source-map-js y el
+js-yaml de gray-matter para evitar versiones vulnerables transitivas. Revisarlas
+al actualizar Next.js y las herramientas de documentación; no retirarlas sin
+comprobar el lockfile con `yarn audit`.
 
 ## Contribuir
 

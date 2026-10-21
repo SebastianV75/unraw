@@ -29,7 +29,7 @@ export function CommandPalette() {
 	const [query, setQuery] = useState("");
 	const [activeIndex, setActiveIndex] = useState(0);
 	const [mode, setMode] = useState<SearchMode>("compact");
-	const { state, results, error } = useUnifiedSearch(query, mode);
+	const { state, results, error } = useUnifiedSearch(query, mode, open);
 	const hasQuery = query.trim().length > 0;
 	const busy = state === "loading" || state === "refreshing";
 

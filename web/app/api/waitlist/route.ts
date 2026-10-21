@@ -9,7 +9,9 @@ const waitlistInputSchema = z.object({
 
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 const RATE_LIMIT_MAX = 5;
+const RATE_LIMIT_MAX_KEYS = 10_000;
 const attempts = new Map<string, { count: number; resetAt: number }>();
+let nextCleanupAt = 0;
 
 function getClientKey(request: Request) {
 	return (
@@ -22,9 +24,17 @@ function getClientKey(request: Request) {
 
 function isRateLimited(key: string) {
 	const now = Date.now();
+	// A persistent Next.js process must not retain every visitor IP forever.
+	if (now >= nextCleanupAt) {
+		for (const [clientKey, entry] of attempts) {
+			if (entry.resetAt <= now) attempts.delete(clientKey);
+		}
+		nextCleanupAt = now + 60_000;
+	}
 	const current = attempts.get(key);
 
 	if (!current || current.resetAt <= now) {
+		if (!current && attempts.size >= RATE_LIMIT_MAX_KEYS) return true;
 		attempts.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
 		return false;
 	}

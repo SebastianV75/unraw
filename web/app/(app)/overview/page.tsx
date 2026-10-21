@@ -26,8 +26,8 @@ export default function OverviewPage() {
 	const [areas, setAreas] = useState<Area[]>([]);
 	const [projects, setProjects] = useState<Project[]>([]);
 	const [tasks, setTasks] = useState<Task[]>([]);
-	const [inbox, setInbox] = useState<InboxItem[]>([]);
-	const [history, setHistory] = useState<CaptureHistory[]>([]);
+	const [inbox, setInbox] = useState<Pick<InboxItem, "id" | "title" | "content">[]>([]);
+	const [history, setHistory] = useState<Pick<CaptureHistory, "created_at">[]>([]);
 	const [areaId, setAreaId] = useState("all");
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState("");
@@ -66,17 +66,20 @@ export default function OverviewPage() {
 					.order("created_at", { ascending: false }),
 				supabase
 					.from("inbox_items")
-					.select("*")
+					.select("id, title, content")
+					.eq("user_id", user.id)
 					.eq("needs_home", true)
-					.order("created_at", { ascending: false }),
+					.order("created_at", { ascending: false })
+					.limit(3),
 				supabase
 					.from("capture_batches")
 					.select(
-						"id, raw_note, status, output_snapshot, saved_references, archived_at, created_at, updated_at",
+						"created_at",
 					)
+					.eq("user_id", user.id)
 					.eq("status", "saved")
 					.order("created_at", { ascending: false })
-					.limit(3),
+					.limit(1),
 			]);
 			if (
 				areaResult.error ||

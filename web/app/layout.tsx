@@ -20,6 +20,7 @@ const geistMono = Geist_Mono({
 const departureMono = localFont({
 	src: "./fonts/DepartureMono-Regular.woff2",
 	variable: "--font-pixel",
+	preload: false,
 	display: "swap",
 });
 
@@ -40,9 +41,9 @@ export const metadata: Metadata = {
 	},
 	icons: {
 		icon: {
-			url: "/brand/unraw-app-icon.png",
+			url: "/brand/unraw-favicon.png",
 			type: "image/png",
-			sizes: "512x512",
+			sizes: "64x64",
 		},
 	},
 };

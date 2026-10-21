@@ -50,14 +50,30 @@ export async function saveCapture(body: unknown): Promise<SaveCaptureResult> {
   const user = await getUser()
   if (!user) throw new Error("Authentication is required.")
   const supabase = await createClient()
-  const [{ data: areas }, { data: projects }] = await Promise.all([
-    supabase.from("areas").select("id").eq("user_id", user.id),
-    supabase.from("projects").select("id, area_id").eq("user_id", user.id),
-  ])
-  const areaIds = new Set((areas ?? []).map((item) => item.id))
-  const projectAreas = new Map((projects ?? []).map((item) => [item.id, item.area_id]))
   const assignment = (key: string, fallback: string | null) =>
     Object.prototype.hasOwnProperty.call(input.assignments, key) ? input.assignments[key] : fallback
+  const requestedAreaIds = [...new Set([
+    ...input.confirmed_output.tasks.map((item, i) => assignment(`task:${i}`, item.area_id)),
+    ...input.confirmed_output.ideas.map((item, i) => assignment(`idea:${i}`, item.area_id)),
+    ...input.confirmed_output.second_brain.map((item, i) => assignment(`knowledge:${i}`, item.area_id)),
+  ].filter((id): id is string => Boolean(id)))]
+  const requestedProjectIds = [...new Set(input.confirmed_output.tasks
+    .map((item, i) => assignment(`task-project:${i}`, item.project_id))
+    .filter((id): id is string => Boolean(id)))]
+  // Validate only referenced IDs, with at most two queries regardless of item count.
+  const [areaResult, projectResult] = await Promise.all([
+    requestedAreaIds.length
+      ? supabase.from("areas").select("id").eq("user_id", user.id).in("id", requestedAreaIds)
+      : Promise.resolve({ data: [], error: null }),
+    requestedProjectIds.length
+      ? supabase.from("projects").select("id, area_id").eq("user_id", user.id).in("id", requestedProjectIds)
+      : Promise.resolve({ data: [], error: null }),
+  ])
+  if (areaResult.error || projectResult.error) throw new Error("No pudimos validar las áreas y proyectos.")
+  const areas = areaResult.data
+  const projects = projectResult.data
+  const areaIds = new Set((areas ?? []).map((item) => item.id))
+  const projectAreas = new Map((projects ?? []).map((item) => [item.id, item.area_id]))
   const area = (kind: string, index: number, fallback: string | null) => {
     const selected = assignment(`${kind}:${index}`, fallback)
     return selected && areaIds.has(selected) ? selected : null

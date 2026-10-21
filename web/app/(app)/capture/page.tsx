@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CaptureReviewPanel } from "@/components/capture/CaptureReviewPanel";
+import dynamic from "next/dynamic";
 import { MarkdownEditor } from "@/components/capture/MarkdownEditor";
 import { LoadingButton } from "@/components/interior/loading-button";
 import {
@@ -33,6 +33,10 @@ import {
 	getDeterministicCaptureDefaults,
 	initialCaptureReviewState,
 } from "@/lib/captures/review-state";
+
+const CaptureReviewPanel = dynamic(() => import("@/components/capture/CaptureReviewPanel").then((module) => module.CaptureReviewPanel), {
+	loading: () => <p role="status">Cargando revisión…</p>,
+});
 
 const suggestionKey = (suggestion: CaptureSuggestion) =>
 	`${suggestion.type}:${suggestion.name.toLowerCase()}`;
@@ -130,6 +134,7 @@ export default function CapturePage() {
 		rawNote,
 		idempotencyKey,
 		result,
+		approved,
 		assignedAreas,
 		assignedProjects,
 		rejectedItems,
