@@ -17,8 +17,14 @@ es la raíz del monorepo. Los archivos `.env*` locales quedan fuera de la imagen
 ## 2. Crear la aplicación
 
 En el proyecto/environment de Coolify, crear un recurso desde el repositorio
-`https://github.com/SebastianV75/unraw` con la rama que contenga estos cambios.
+`https://github.com/SebastianV75/unraw` con la rama `main`, una vez integrado el
+PR de preparación del despliegue. `deploy/coolify` es una rama de trabajo temporal.
 Usar GitHub App o deploy key si el repositorio es privado.
+
+Para una aplicación existente que sigue `deploy/coolify`, integrar primero los
+cambios a `main`, cambiar la rama del recurso en Coolify a `main` y desplegar.
+Mantener dominio, variables y configuración del recurso. Las próximas mejoras
+se desarrollan en ramas breves y se integran a `main` mediante PR.
 
 - Build Pack / Build strategy: **Dockerfile**.
 - Base Directory: `/` (raíz del repo).
