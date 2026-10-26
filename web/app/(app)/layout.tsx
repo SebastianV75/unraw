@@ -18,6 +18,7 @@ import { useEffect, useRef, useState } from "react";
 import Logo from "@/components/Logo";
 import { CommandPalette } from "@/components/navigation/CommandPalette";
 import { GlobalCaptureComposer } from "@/components/capture/GlobalCaptureComposer";
+import { FloatingNavigation } from "@/components/rareui/FloatingNavigation/FloatingNavigation";
 import { createClient } from "@/lib/supabase/client";
 
 const navigation = [
@@ -50,8 +51,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<"unraw" | "unraw-dark">("unraw");
   const [moreOpen, setMoreOpen] = useState(false);
   const moreButtonRef = useRef<HTMLButtonElement>(null);
-  const moreMenuRef = useRef<HTMLElement>(null);
-
+  const moreMenuRef = useRef<HTMLDivElement>(null);
   const isCapture = pathname === "/capture";
   const isMoreActive = moreNavigation.some(({ href }) => isActive(href));
 
@@ -70,6 +70,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     if (!moreOpen) return;
 
     function handleKeyDown(event: KeyboardEvent) {
+      // Native dialogs own keyboard input while open, including Escape and Tab.
+      if (document.querySelector("dialog[open]")) return;
+
       if (event.key === "Escape") {
         event.preventDefault();
         setMoreOpen(false);
@@ -254,30 +257,12 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </div>
       </header>
       <nav className="app-shell-mobile-nav" aria-label="Navegación móvil">
-        {mobileNavigation.map(({ label, href, icon: Icon }) => {
-          const active = isActive(href);
-          return (
-            <Link
-              className={`app-shell-mobile-nav-item ${
-                href === "/capture" ? "is-primary" : ""
-              } ${active ? "is-active" : ""}`}
-              href={href}
-              key={href}
-              aria-current={active ? "page" : undefined}
-              aria-label={label}
-            >
-              <Icon
-                size={href === "/capture" ? 22 : 20}
-                color="currentColor"
-                weight="Outline"
-                strokeWidth={1.7}
-                aria-hidden="true"
-              />
-              <span>{label}</span>
-            </Link>
-          );
-        })}
-        <div className="app-shell-mobile-more">
+        <FloatingNavigation
+          items={mobileNavigation}
+          isActive={isActive}
+          more={(
+            <>
+
           <button
             ref={moreButtonRef}
             className={`app-shell-mobile-nav-item app-shell-mobile-more-trigger ${
@@ -300,55 +285,60 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             <span>Más</span>
           </button>
           {moreOpen && (
-            <nav
-              id="mobile-more-menu"
-              ref={moreMenuRef}
-              className="app-shell-mobile-more-menu"
-              aria-label="Más zonas"
-            >
-              {moreNavigation.map(({ label, href, icon: Icon }) => {
-                const active = isActive(href);
-                return (
-                  <Link
-                    className={`app-shell-mobile-more-item ${
-                      active ? "is-active" : ""
-                    }`}
-                    href={href}
-                    key={href}
-                    aria-current={active ? "page" : undefined}
-                    onClick={() => setMoreOpen(false)}
-                  >
-                    <Icon
-                      size={18}
-                      color="currentColor"
-                      weight="Outline"
-                      strokeWidth={1.7}
-                      aria-hidden="true"
-                    />
-                    <span>{label}</span>
-                  </Link>
-                );
-              })}
-              <button
-                className="app-shell-mobile-more-item app-shell-mobile-more-signout"
-                type="button"
-                onClick={signOut}
-                disabled={loading}
-                aria-busy={loading}
-                aria-label="Cerrar sesión"
+              <div
+                id="mobile-more-menu"
+                ref={moreMenuRef}
+                className="app-shell-mobile-more-menu"
+                role="group"
+                aria-label="Más zonas"
+                aria-hidden={!moreOpen}
+                inert={!moreOpen}
               >
-                <Logout6
-                  size={18}
-                  color="currentColor"
-                  weight="Outline"
-                  strokeWidth={1.7}
-                  aria-hidden="true"
-                />
-                <span>{loading ? "Cerrando sesión…" : "Cerrar sesión"}</span>
-              </button>
-            </nav>
+                {moreNavigation.map(({ label, href, icon: Icon }) => {
+                  const active = isActive(href);
+                  return (
+                    <Link
+                      className={`app-shell-mobile-more-item ${
+                        active ? "is-active" : ""
+                      }`}
+                      href={href}
+                      key={href}
+                      aria-current={active ? "page" : undefined}
+                      onClick={() => setMoreOpen(false)}
+                    >
+                      <Icon
+                        size={18}
+                        color="currentColor"
+                        weight="Outline"
+                        strokeWidth={1.7}
+                        aria-hidden="true"
+                      />
+                      <span>{label}</span>
+                    </Link>
+                  );
+                })}
+                <button
+                  className="app-shell-mobile-more-item app-shell-mobile-more-signout"
+                  type="button"
+                  onClick={signOut}
+                  disabled={loading}
+                  aria-busy={loading}
+                  aria-label="Cerrar sesión"
+                >
+                  <Logout6
+                    size={18}
+                    color="currentColor"
+                    weight="Outline"
+                    strokeWidth={1.7}
+                    aria-hidden="true"
+                  />
+                  <span>{loading ? "Cerrando sesión…" : "Cerrar sesión"}</span>
+                </button>
+              </div>
+            )}
+            </>
           )}
-        </div>
+        />
       </nav>
       <main id="main-content" className="app-shell-main">{children}</main>
     </div>

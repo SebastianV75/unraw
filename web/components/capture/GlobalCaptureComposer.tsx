@@ -1,7 +1,9 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import { useEffect, useRef, useState } from "react";
 import { createIdempotencyKey } from "@/lib/captures/idempotency";
+import { canStartCaptureSave, shouldSubmitCaptureOnEnter } from "./quick-capture-interaction";
 
 export class CaptureHttpError extends Error {
 	readonly status: number;
@@ -54,42 +56,62 @@ export function GlobalCaptureComposer() {
 	const [note, setNote] = useState("");
 	const [status, setStatus] = useState("");
 	const [saving, setSaving] = useState(false);
+	const [mounted, setMounted] = useState(false);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
+	const dialogRef = useRef<HTMLDialogElement>(null);
 	const triggerRef = useRef<HTMLButtonElement>(null);
+	const openerRef = useRef<HTMLElement | null>(null);
+	const savingRef = useRef(false);
+
+	useEffect(() => setMounted(true), []);
+
+	function openFrom(opener: HTMLElement | null) {
+		openerRef.current = opener;
+		setStatus("");
+		setOpen(true);
+	}
 
 	function close() {
-		setOpen(false);
-		requestAnimationFrame(() => triggerRef.current?.focus());
+		if (dialogRef.current?.open) dialogRef.current.close();
+		else setOpen(false);
+	}
+
+	function restoreFocus() {
+		const opener = openerRef.current;
+		if (opener?.isConnected && opener.getClientRects().length > 0 && !opener.closest("[inert]")) {
+			opener.focus();
+		}
 	}
 
 	useEffect(() => {
-		if (!open) return;
+		if (!open || !mounted) return;
+		const dialog = dialogRef.current;
+		if (!dialog || dialog.open) return;
 		const previousOverflow = document.body.style.overflow;
 		document.body.style.overflow = "hidden";
+		dialog.showModal();
+		textareaRef.current?.focus();
 		return () => {
+			if (dialog.open) dialog.close();
 			document.body.style.overflow = previousOverflow;
 		};
-	}, [open]);
+	}, [open, mounted]);
 
 	useEffect(() => {
-		function handleShortcut(event: KeyboardEvent) {
-			if (isGlobalCaptureShortcut(event)) {
+		function handleKeyDown(event: KeyboardEvent) {
+			if (!open && isGlobalCaptureShortcut(event)) {
 				event.preventDefault();
-				setOpen(true);
-				setStatus("");
-				requestAnimationFrame(() => textareaRef.current?.focus());
-			} else if (event.key === "Escape" && open) {
-				event.preventDefault();
-				close();
+				openFrom(document.activeElement instanceof HTMLElement ? document.activeElement : null);
 			}
 		}
-		window.addEventListener("keydown", handleShortcut);
-		return () => window.removeEventListener("keydown", handleShortcut);
+		window.addEventListener("keydown", handleKeyDown);
+		return () => window.removeEventListener("keydown", handleKeyDown);
 	}, [open]);
 
 	async function save() {
 		const rawNote = note.trim();
-		if (!rawNote || saving) return;
+		if (!canStartCaptureSave(rawNote, savingRef.current)) return;
+		savingRef.current = true;
 		setSaving(true);
 		setStatus("Guardando en Inbox…");
 		try {
@@ -99,24 +121,25 @@ export function GlobalCaptureComposer() {
 				body: JSON.stringify({ idempotency_key: createIdempotencyKey(), raw_note: rawNote, confirmed_output: { tasks: [], ideas: [], second_brain: [], suggestions: [] }, assignments: {}, fallback_to_inbox: true }),
 			});
 			await parseCaptureResponse(response);
-			setNote("");
+			setNote((current) => current.trim() === rawNote ? "" : current);
 			setStatus("Guardado en Inbox");
 			requestAnimationFrame(() => textareaRef.current?.focus());
 		} catch (error) {
 			setStatus(captureErrorMessage(error));
 		} finally {
+			savingRef.current = false;
 			setSaving(false);
 		}
 	}
 
 	return (
 		<>
-			<button ref={triggerRef} type="button" className="global-capture-trigger" onClick={() => { setOpen(true); requestAnimationFrame(() => textareaRef.current?.focus()); }} aria-haspopup="dialog" aria-expanded={open}>
+			<button ref={triggerRef} type="button" className="global-capture-trigger" onClick={(event) => openFrom(event.currentTarget)} aria-haspopup="dialog" aria-expanded={open}>
 				<span className="global-capture-trigger-label">Captura rápida</span> <kbd>⌘⇧Espacio</kbd>
 			</button>
-			{open && (
-				<div className="global-capture-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) close(); }}>
-					<section className="global-capture-dialog" role="dialog" aria-modal="true" aria-labelledby="global-capture-title" aria-describedby="global-capture-description">
+			{mounted && open && createPortal(
+				<dialog ref={dialogRef} className="global-capture-overlay" aria-labelledby="global-capture-title" aria-describedby="global-capture-description" onClose={() => { setOpen(false); requestAnimationFrame(restoreFocus); }} onClick={(event) => { if (event.target !== event.currentTarget) return; const panel = event.currentTarget.querySelector(".global-capture-dialog")?.getBoundingClientRect(); if (!panel || event.clientX < panel.left || event.clientX > panel.right || event.clientY < panel.top || event.clientY > panel.bottom) close(); }}>
+					<section className="global-capture-dialog">
 						<header className="global-capture-header">
 							<div className="global-capture-heading">
 								<span className="global-capture-mark" aria-hidden="true">＋</span>
@@ -125,10 +148,10 @@ export function GlobalCaptureComposer() {
 									<h2 id="global-capture-title">Escribe y sigue</h2>
 								</div>
 							</div>
-							<kbd className="global-capture-escape">Esc</kbd>
+							<button type="button" className="global-capture-close" onClick={close} aria-label="Cerrar captura">×</button>
 						</header>
 						<p id="global-capture-description" className="global-capture-description">Guarda una nota directamente en Inbox, sin ordenar.</p>
-						<textarea ref={textareaRef} value={note} onChange={(event) => setNote(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void save(); } }} placeholder="Escribe lo que tienes en mente…" aria-label="Nota rápida" maxLength={12000} disabled={saving} />
+						<textarea ref={textareaRef} value={note} onChange={(event) => setNote(event.target.value)} onKeyDown={(event) => { if (shouldSubmitCaptureOnEnter(event.nativeEvent)) { event.preventDefault(); void save(); } }} placeholder="Escribe lo que tienes en mente…" aria-label="Nota rápida" maxLength={12000} disabled={saving} />
 						<footer className="global-capture-actions">
 							<span className="global-capture-status" role="status" aria-live="polite">{status}</span>
 							<div className="global-capture-command-hints" aria-label="Atajos de teclado">
@@ -138,7 +161,8 @@ export function GlobalCaptureComposer() {
 							<button type="button" className="btn btn-primary btn-sm" onClick={() => void save()} disabled={!note.trim() || saving}>{saving ? "Guardando…" : "Guardar"}</button>
 						</footer>
 					</section>
-				</div>
+				</dialog>,
+				document.body,
 			)}
 		</>
 	);

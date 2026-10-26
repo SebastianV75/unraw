@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { canStartCaptureSave, shouldSubmitCaptureOnEnter } from "./quick-capture-interaction";
 import {
 	CaptureHttpError,
 	captureErrorMessage,
@@ -45,6 +46,22 @@ describe("GlobalCaptureComposer shortcut", () => {
 		expect(isGlobalCaptureShortcut({ ...base, repeat: true })).toBe(false);
 		expect(isGlobalCaptureShortcut({ ...base, shiftKey: false })).toBe(false);
 		expect(isGlobalCaptureShortcut({ ...base, ctrlKey: false, metaKey: false })).toBe(false);
+	});
+});
+
+describe("quick capture interaction rules", () => {
+	it("submits only plain, non-composing, non-repeated Enter", () => {
+		const enter = { key: "Enter", shiftKey: false, isComposing: false, repeat: false };
+		expect(shouldSubmitCaptureOnEnter(enter)).toBe(true);
+		expect(shouldSubmitCaptureOnEnter({ ...enter, shiftKey: true })).toBe(false);
+		expect(shouldSubmitCaptureOnEnter({ ...enter, isComposing: true })).toBe(false);
+		expect(shouldSubmitCaptureOnEnter({ ...enter, repeat: true })).toBe(false);
+	});
+
+	it("uses trimmed content and a synchronous single-flight lock decision", () => {
+		expect(canStartCaptureSave(" note ", false)).toBe(true);
+		expect(canStartCaptureSave("  ", false)).toBe(false);
+		expect(canStartCaptureSave("note", true)).toBe(false);
 	});
 });
 
